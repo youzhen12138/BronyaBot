@@ -68,8 +68,8 @@ jobs:
           git push origin $VERSION_TAG
 
       - name: Create GitHub release and upload assets
-        uses: softprops/action-gh-release@v1
         run: ls -al ./bin/
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.VERSION_TAG }}
           files: ./bin/**/*       # 上传所有平台的二进制文件
