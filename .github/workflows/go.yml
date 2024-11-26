@@ -49,7 +49,7 @@ jobs:
       - name: Build project
         run: |
           ls -al
-          cd ./..
+          cd ./
           mkdir -p ./bin
           go build -o ./bin
 
