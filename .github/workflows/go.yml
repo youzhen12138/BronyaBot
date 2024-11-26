@@ -40,18 +40,20 @@ jobs:
       - name: List files in bin directory
         run: ls -l ./bin
 
-#      - name: Package Source Code
-#        run: |
-#          echo "Packaging source code..."
-#          tar -czvf ./bin/BronyaBot-source.tar.gz .
+      #      - name: Package Source Code
+      #        run: |
+      #          echo "Packaging source code..."
+      #          tar -czvf ./bin/BronyaBot-source.tar.gz .
       
 
       # 创建 Git 标签
-      - name: Create Git Tag
+      - name: Create Git Tag and Push
         run: |
           TAG_NAME=v$(date +'%Y%m%d%H%M%S')  # 使用当前时间戳创建标签
           git tag $TAG_NAME
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin $TAG_NAME
+
 
       # 发布二进制文件和源代码到 GitHub Releases
       - name: Upload release assets
