@@ -41,12 +41,14 @@ jobs:
       # 切换到项目目录并安装依赖
       - name: Install dependencies
         run: |
-          cd ./..
+          ls -al
+          cd ./
           go mod tidy
 
       # 构建项目
       - name: Build project
         run: |
+          ls -al
           cd ./..
           go build -o yatori-go-console
 
