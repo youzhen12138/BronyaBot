@@ -1,136 +1,3 @@
-##name: Go Build
-##
-##on:
-##  push:
-##    branches:
-##      - main # 触发构建的分支
-##  pull_request:
-##    branches:
-##      - main
-##
-##jobs:
-##  build:
-##    runs-on: ubuntu-latest
-##
-##    steps:
-##      # 检出代码
-##      - name: Checkout code
-##        uses: actions/checkout@v3
-##
-##      #      # 安装必要依赖
-##      #      - name: Install dependencies
-##      #        run: |
-##      #          sudo apt-get update
-##      #          sudo apt-get install -y libasound2-dev pkg-config
-##
-##      # 设置 Go 环境
-##      - name: Set up Go
-##        uses: actions/setup-go@v4
-##        with:
-##          go-version: 1.23.1 # 根据你的项目使用的 Go 版本调整
-##
-##      # 缓存 Go 依赖
-##      - name: Cache Go modules
-##        uses: actions/cache@v3
-##        with:
-##          path: ~/go/pkg/mod
-##          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-##          restore-keys: |
-##            ${{ runner.os }}-go-
-##
-##      # 切换到项目目录并安装依赖
-##      - name: Install dependencies
-##        run: |
-##          ls -al
-##          cd ./
-##          go mod tidy
-##
-##      # 构建项目
-##      - name: Build project
-##        run: |
-##          ls -al
-##          cd ./
-##          mkdir -p ./bin
-##          go build -o ./bin
-##
-##      # 上传二进制文件作为 Artifact
-##      - name: Upload binary
-##        uses: actions/upload-artifact@v3
-##        with:
-##          name: myapp-binary
-##          path: ./bin
-#
-##name: Go Build and Release
-##
-##on:
-##  push:
-##    branches:
-##      - main
-##  pull_request:
-##    branches:
-##      - main
-##
-##jobs:
-##  build:
-##    runs-on: ubuntu-latest
-##
-##    strategy:
-##      matrix:
-##        goos: [linux, windows, darwin] # Darwin 是 macOS 的操作系统
-##        goarch: [amd64, arm64]         # 架构选择 amd64 和 arm64
-##
-##    steps:
-##      # 检出代码
-##      - name: Checkout code
-##        uses: actions/checkout@v3
-##
-##      # 设置 Go 环境
-##      - name: Set up Go
-##        uses: actions/setup-go@v4
-##        with:
-##          go-version: 1.23.1 # 根据你的项目使用的 Go 版本调整
-##
-##      # 缓存 Go 依赖
-##      - name: Cache Go modules
-##        uses: actions/cache@v3
-##        with:
-##          path: ~/go/pkg/mod
-##          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-##          restore-keys: |
-##            ${{ runner.os }}-go-
-##
-##      # 安装 Go 依赖
-##      - name: Install dependencies
-##        run: |
-##          go mod tidy
-##
-##      # 设置交叉编译
-##      - name: Build project for ${{ matrix.goos }}-${{ matrix.goarch }}
-##        run: |
-##          mkdir -p ./bin/${{ matrix.goos }}-${{ matrix.goarch }}
-##          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/${{ matrix.goos }}-${{ matrix.goarch }}/bronyaBot
-##
-##      # 上传二进制文件作为 Artifact
-##      - name: Upload binaries
-##        uses: actions/upload-artifact@v3
-##        with:
-##          name: bronyaBot-binaries
-##          path: ./bin/
-##
-##  release:
-##    needs: build
-##    runs-on: ubuntu-latest
-##    steps:
-##      - name: Checkout code
-##        uses: actions/checkout@v3
-##
-##      - name: Create GitHub release
-##        uses: softprops/action-gh-release@v1
-##        with:
-##          files: ./bin/*
-##        env:
-##          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#
 #name: Go Build and Release
 #
 #on:
@@ -151,17 +18,14 @@
 #        goarch: [amd64, arm64]         # 架构选择 amd64 和 arm64
 #
 #    steps:
-#      # 检出代码
 #      - name: Checkout code
 #        uses: actions/checkout@v3
 #
-#      # 设置 Go 环境
 #      - name: Set up Go
 #        uses: actions/setup-go@v4
 #        with:
-#          go-version: 1.23.1 # 根据你的项目使用的 Go 版本调整
+#          go-version: 1.23.1
 #
-#      # 缓存 Go 依赖
 #      - name: Cache Go modules
 #        uses: actions/cache@v3
 #        with:
@@ -170,18 +34,16 @@
 #          restore-keys: |
 #            ${{ runner.os }}-go-
 #
-#      # 安装 Go 依赖
 #      - name: Install dependencies
 #        run: |
 #          go mod tidy
 #
-#      # 设置交叉编译
 #      - name: Build project for ${{ matrix.goos }}-${{ matrix.goarch }}
 #        run: |
 #          mkdir -p ./bin/${{ matrix.goos }}-${{ matrix.goarch }}
 #          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/${{ matrix.goos }}-${{ matrix.goarch }}/bronyaBot
+#          ls -al ./bin/${{ matrix.goos }}-${{ matrix.goarch }} # 确保有二进制文件
 #
-#      # 上传二进制文件作为 Artifact
 #      - name: Upload binaries
 #        uses: actions/upload-artifact@v3
 #        with:
@@ -195,27 +57,23 @@
 #      - name: Checkout code
 #        uses: actions/checkout@v3
 #
-#      # 创建 GitHub Release 标签（项目名 + 时间戳）
 #      - name: Create GitHub release tag
 #        id: create_release
 #        run: |
-#          VERSION_TAG="BronyaBot-$(date +'%Y%m%d%H%M%S')" # 项目名 + 时间戳
+#          VERSION_TAG="BronyaBot-$(date +'%Y%m%d%H%M%S')"
 #          echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
 #          git config --global user.name "github-actions[bot]"
 #          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 #          git tag $VERSION_TAG
 #          git push origin $VERSION_TAG
 #
-#      # 创建 GitHub release 并上传二进制文件
 #      - name: Create GitHub release and upload assets
 #        uses: softprops/action-gh-release@v1
 #        with:
-#          tag_name: ${{ env.VERSION_TAG }} # 使用上面创建的标签
-#          files: ./bin/*
+#          tag_name: ${{ env.VERSION_TAG }}
+#          files: ./bin/**/*       # 上传所有平台的二进制文件
 #        env:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
 name: Go Build and Release
 
 on:
@@ -232,36 +90,32 @@ jobs:
 
     strategy:
       matrix:
-        goos: [linux, windows, darwin] # Darwin 是 macOS 的操作系统
-        goarch: [amd64, arm64]         # 架构选择 amd64 和 arm64
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
 
     steps:
+      # 检出代码
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 设置 Go 环境
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: 1.23.1
 
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
+      # 安装依赖
       - name: Install dependencies
         run: |
           go mod tidy
 
-      - name: Build project for ${{ matrix.goos }}-${{ matrix.goarch }}
+      # 设置交叉编译并构建项目
+      - name: Build project
         run: |
           mkdir -p ./bin/${{ matrix.goos }}-${{ matrix.goarch }}
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/${{ matrix.goos }}-${{ matrix.goarch }}/bronyaBot
-          ls -al ./bin/${{ matrix.goos }}-${{ matrix.goarch }} # 确保有二进制文件
 
+      # 上传二进制文件作为 Artifact
       - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
@@ -275,6 +129,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 创建 GitHub Release 标签
       - name: Create GitHub release tag
         id: create_release
         run: |
@@ -285,10 +140,11 @@ jobs:
           git tag $VERSION_TAG
           git push origin $VERSION_TAG
 
+      # 创建 GitHub release 并上传二进制文件
       - name: Create GitHub release and upload assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.VERSION_TAG }}
-          files: ./bin/**/*       # 上传所有平台的二进制文件
+          files: ./bin/*  # 确保此处指定了正确的二进制文件路径
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
