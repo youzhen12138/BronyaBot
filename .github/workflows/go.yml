@@ -60,6 +60,77 @@
 #          name: myapp-binary
 #          path: ./bin
 
+#name: Go Build and Release
+#
+#on:
+#  push:
+#    branches:
+#      - main
+#  pull_request:
+#    branches:
+#      - main
+#
+#jobs:
+#  build:
+#    runs-on: ubuntu-latest
+#
+#    strategy:
+#      matrix:
+#        goos: [linux, windows, darwin] # Darwin 是 macOS 的操作系统
+#        goarch: [amd64, arm64]         # 架构选择 amd64 和 arm64
+#
+#    steps:
+#      # 检出代码
+#      - name: Checkout code
+#        uses: actions/checkout@v3
+#
+#      # 设置 Go 环境
+#      - name: Set up Go
+#        uses: actions/setup-go@v4
+#        with:
+#          go-version: 1.23.1 # 根据你的项目使用的 Go 版本调整
+#
+#      # 缓存 Go 依赖
+#      - name: Cache Go modules
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/go/pkg/mod
+#          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+#          restore-keys: |
+#            ${{ runner.os }}-go-
+#
+#      # 安装 Go 依赖
+#      - name: Install dependencies
+#        run: |
+#          go mod tidy
+#
+#      # 设置交叉编译
+#      - name: Build project for ${{ matrix.goos }}-${{ matrix.goarch }}
+#        run: |
+#          mkdir -p ./bin/${{ matrix.goos }}-${{ matrix.goarch }}
+#          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/${{ matrix.goos }}-${{ matrix.goarch }}/bronyaBot
+#
+#      # 上传二进制文件作为 Artifact
+#      - name: Upload binaries
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: bronyaBot-binaries
+#          path: ./bin/
+#
+#  release:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v3
+#
+#      - name: Create GitHub release
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          files: ./bin/*
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 name: Go Build and Release
 
 on:
@@ -124,7 +195,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Create GitHub release
+      # 创建 GitHub Release 标签（项目名 + 时间戳）
+      - name: Create GitHub release tag
+        id: create_release
+        run: |
+          VERSION_TAG="BronyaBot-$(date +'%Y%m%d%H%M%S')" # 项目名 + 时间戳
+          echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
+          git tag $VERSION_TAG
+          git push origin $VERSION_TAG
+
+      # 创建 GitHub release 并上传二进制文件
+      - name: Create GitHub release and upload assets
         uses: softprops/action-gh-release@v1
         with:
           files: ./bin/*
