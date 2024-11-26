@@ -25,7 +25,10 @@ jobs:
       - name: Test
         run: go test -v ./...
 
-      # 打包二进制文件
+
+
+
+        # 打包二进制文件
       - name: Build Binary
         run: |
           mkdir -p ./bin
@@ -33,10 +36,15 @@ jobs:
           GOOS=windows GOARCH=amd64 go build -o ./bin/BronyaBot-windows-amd64.exe .
           GOOS=darwin GOARCH=amd64 go build -o ./bin/BronyaBot-darwin-amd64 .
 
-      # 打包源代码
+
+      - name: List files in bin directory
+        run: ls -l
+
       - name: Package Source Code
         run: |
-          tar -czvf ./bin/BronyaBot-source.tar.gz .
+          echo "Packaging source code..."
+          tar -czvf ./BronyaBot-source.tar.gz .
+      
 
       # 创建 Git 标签
       - name: Create Git Tag
