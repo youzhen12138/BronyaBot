@@ -42,33 +42,6 @@ func decodeBase64Image(data string) (image.Image, error) {
 	return img, err
 }
 
-// FindBestMatch 寻找滑块在背景中的最佳匹配位置
-// FindBestMatch 寻找滑块在背景中的最佳匹配位置
-//func (sc *SliderCaptcha) FindBestMatch() (float64, float64) {
-//	bestX, bestY := 0.0, 0.0
-//	bestScore := 0.0
-//	stepSize := 0.01 // 设定更小的步长，精度提高
-//
-//	for y := 0.0; y <= float64(sc.Background.Bounds().Dy())-float64(sc.Slider.Bounds().Dy()); y += stepSize {
-//		for x := 0.0; x <= float64(sc.Background.Bounds().Dx())-float64(sc.Slider.Bounds().Dx()); x += stepSize {
-//			score := sc.computeMatch(int(x), int(y))
-//			if score > bestScore {
-//				bestScore = score
-//				bestX, bestY = x, y
-//			}
-//		}
-//	}
-//
-//	// 为了引入随机性，你可以加一个小的随机扰动
-//	rand.Seed(time.Now().UnixNano())
-//	randomFactor := 0.0001 * (rand.Float64() - 0.5) // 随机微调
-//	bestX += randomFactor
-//	bestY += randomFactor
-//
-//	global.Log.Info(fmt.Sprintf("Best match found at: (%.10f, %.10f) with score: %.4f", bestX, bestY, bestScore))
-//	return bestX, bestY
-//}
-
 func (sc *SliderCaptcha) FindBestMatch() (int, int) {
 	bestX, bestY := 0, 0
 	bestScore := 0.0
