@@ -42,6 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           ls -al
+          cd ./
           go mod tidy
 
       # 构建项目
