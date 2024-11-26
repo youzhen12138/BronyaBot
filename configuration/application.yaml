@@ -1,0 +1,20 @@
+mysql:
+  dataBase: autosign
+  userName: root
+  passWord: 123456789
+  port: 1111
+  driverName: mysql
+  host: localhost
+  log-level: debug
+  max-idle-conns: 10
+  max-open-conns: 100
+  conn-max-life-time: 5
+#  🛠️🔧⛏️🗝️⚙️🧬💡
+logger:
+  level: info
+  prefix: '[🛠️]'
+  director: log
+  showLine: true
+  logInConsole: true
+
+
