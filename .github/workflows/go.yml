@@ -17,11 +17,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-#      # 安装必要依赖
-#      - name: Install dependencies
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get install -y libasound2-dev pkg-config
+      #      # 安装必要依赖
+      #      - name: Install dependencies
+      #        run: |
+      #          sudo apt-get update
+      #          sudo apt-get install -y libasound2-dev pkg-config
 
       # 设置 Go 环境
       - name: Set up Go
@@ -50,11 +50,12 @@ jobs:
         run: |
           ls -al
           cd ./..
-          go build -o 
+          mkdir -p ./bin
+          go build -o ./bin
 
       # 上传二进制文件作为 Artifact
       - name: Upload binary
         uses: actions/upload-artifact@v3
         with:
           name: myapp-binary
-          path: ./..
+          path: ./../bin
