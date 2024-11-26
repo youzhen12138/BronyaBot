@@ -38,12 +38,12 @@ jobs:
 
 
       - name: List files in bin directory
-        run: ls -l
+        run: ls -l ./bin
 
       - name: Package Source Code
         run: |
           echo "Packaging source code..."
-          tar -czvf ./BronyaBot-source.tar.gz .
+          tar -czvf ./bin/BronyaBot-source.tar.gz .
       
 
       # 创建 Git 标签
