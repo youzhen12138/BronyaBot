@@ -143,6 +143,16 @@ CREATE TABLE sign
 
 ---
 
+## 📈 GitHub Stars 统计
+
+Star 趋势图
+让 BronyaBot 成为你学习路上的得力助手！🎉 签到从此无忧！
+
+![GitHub Stars](https://img.shields.io/github/stars/mirai-MIC/BronyaBot?style=flat&label=Stars)
+[![Star History Chart](https://api.star-history.com/svg?repos=mirai-MIC/BronyaBot&type=Date)](https://star-history.com/#mirai-MIC/CatBot&Date)
+
+---
+
 ## 📧 联系我们
 
 如有问题或建议，请发送邮件至 [3092179918@qq.com]()。
