@@ -1,9 +1,71 @@
-name: Go Build
+#name: Go Build
+#
+#on:
+#  push:
+#    branches:
+#      - main # 触发构建的分支
+#  pull_request:
+#    branches:
+#      - main
+#
+#jobs:
+#  build:
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      # 检出代码
+#      - name: Checkout code
+#        uses: actions/checkout@v3
+#
+#      #      # 安装必要依赖
+#      #      - name: Install dependencies
+#      #        run: |
+#      #          sudo apt-get update
+#      #          sudo apt-get install -y libasound2-dev pkg-config
+#
+#      # 设置 Go 环境
+#      - name: Set up Go
+#        uses: actions/setup-go@v4
+#        with:
+#          go-version: 1.23.1 # 根据你的项目使用的 Go 版本调整
+#
+#      # 缓存 Go 依赖
+#      - name: Cache Go modules
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/go/pkg/mod
+#          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+#          restore-keys: |
+#            ${{ runner.os }}-go-
+#
+#      # 切换到项目目录并安装依赖
+#      - name: Install dependencies
+#        run: |
+#          ls -al
+#          cd ./
+#          go mod tidy
+#
+#      # 构建项目
+#      - name: Build project
+#        run: |
+#          ls -al
+#          cd ./
+#          mkdir -p ./bin
+#          go build -o ./bin
+#
+#      # 上传二进制文件作为 Artifact
+#      - name: Upload binary
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: myapp-binary
+#          path: ./bin
+
+name: Go Build and Release
 
 on:
   push:
     branches:
-      - main # 触发构建的分支
+      - main
   pull_request:
     branches:
       - main
@@ -12,16 +74,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin] # Darwin 是 macOS 的操作系统
+        goarch: [amd64, arm64]         # 架构选择 amd64 和 arm64
+
     steps:
       # 检出代码
       - name: Checkout code
         uses: actions/checkout@v3
-
-      #      # 安装必要依赖
-      #      - name: Install dependencies
-      #        run: |
-      #          sudo apt-get update
-      #          sudo apt-get install -y libasound2-dev pkg-config
 
       # 设置 Go 环境
       - name: Set up Go
@@ -38,24 +99,42 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      # 切换到项目目录并安装依赖
+      # 安装 Go 依赖
       - name: Install dependencies
         run: |
-          ls -al
-          cd ./
           go mod tidy
 
-      # 构建项目
-      - name: Build project
+      # 设置交叉编译
+      - name: Build project for ${{ matrix.goos }}-${{ matrix.goarch }}
         run: |
-          ls -al
-          cd ./
-          mkdir -p ./bin
-          go build -o ./bin
+          mkdir -p ./bin/${{ matrix.goos }}-${{ matrix.goarch }}
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/${{ matrix.goos }}-${{ matrix.goarch }}/bronyaBot
 
       # 上传二进制文件作为 Artifact
-      - name: Upload binary
+      - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
-          name: myapp-binary
-          path: ./bin
+          name: bronyaBot-binaries
+          path: ./bin/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create GitHub release
+        uses: gh-actions/create-release@v1.1
+        with:
+          tag_name: ${{ github.sha }}
+          release_name: Release ${{ github.sha }}
+          body: 'Release for commit ${{ github.sha }}'
+
+      - name: Upload release assets
+        uses: gh-actions/upload-release-asset@v1
+        with:
+          tag_name: ${{ github.sha }}
+          asset_path: ./bin/*
+          asset_name: ${{ github.sha }}.tar.gz
+          asset_content_type: application/gzip
