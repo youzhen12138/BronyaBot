@@ -1,58 +1,58 @@
-name: BronyaBot
+name: Go Build
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main # 触发构建的分支
   pull_request:
-    branches: [ "main" ]
-  # 手动触发的情况
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
+    steps:
+      # 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 安装必要依赖
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev pkg-config
+
+      # 设置 Go 环境
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.23.1'
+          go-version: 1.23.1 # 设置 Go 版本为 1.23.1
 
-      - name: Build
-        run: go build -v ./...
-
-      - name: Test
-        run: go test -v ./...
-
-      # 打包二进制文件
-      - name: Build Binary
-        run: |
-          mkdir -p ./bin
-          GOOS=linux GOARCH=amd64 go build -o ./bin/BronyaBot-linux-amd64 .
-          GOOS=windows GOARCH=amd64 go build -o ./bin/BronyaBot-windows-amd64.exe .
-          GOOS=darwin GOARCH=amd64 go build -o ./bin/BronyaBot-darwin-amd64 .
-
-      # 打包源代码
-      - name: Package Source Code
-        run: |
-          tar -czvf ./bin/BronyaBot-source.tar.gz .
-
-      # 创建 Git 标签
-      - name: Create Git Tag
-        run: |
-          TAG_NAME=v$(date +'%Y%m%d%H%M%S')  # 使用当前时间戳创建标签
-          git tag $TAG_NAME
-          git push origin $TAG_NAME
-
-      # 发布二进制文件和源代码到 GitHub Releases
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v1
+      # 缓存 Go 依赖
+      - name: Cache Go modules
+        uses: actions/cache@v3
         with:
-          files: |
-            ./bin/BronyaBot-linux-amd64
-            ./bin/BronyaBot-windows-amd64.exe
-            ./bin/BronyaBot-darwin-amd64
-            ./bin/BronyaBot-source.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      # 切换到 BronyaBot 项目目录并安装依赖
+      - name: Install dependencies
+        run: |
+          cd ./BronyaBot
+          go mod tidy
+
+      # 构建项目
+      - name: Build project
+        run: |
+          cd ./BronyaBot
+          go build -o bronya-bot
+
+      # 上传二进制文件作为 Artifact
+      - name: Upload binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: bronya-bot-binary
+          path: ./BronyaBot/bronya-bot
