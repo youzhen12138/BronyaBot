@@ -40,10 +40,10 @@ jobs:
       - name: List files in bin directory
         run: ls -l ./bin
 
-      - name: Package Source Code
-        run: |
-          echo "Packaging source code..."
-          tar -czvf ./bin/BronyaBot-source.tar.gz .
+#      - name: Package Source Code
+#        run: |
+#          echo "Packaging source code..."
+#          tar -czvf ./bin/BronyaBot-source.tar.gz .
       
 
       # 创建 Git 标签
@@ -61,6 +61,5 @@ jobs:
             ./bin/BronyaBot-linux-amd64
             ./bin/BronyaBot-windows-amd64.exe
             ./bin/BronyaBot-darwin-amd64
-            ./bin/BronyaBot-source.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
