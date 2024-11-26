@@ -29,8 +29,16 @@ type MoguDing struct {
 
 func (m *MoguDing) Run() {
 	global.Log.Infof("Starting sign-in process for user: %s", m.PhoneNumber)
-	m.GetBlock()
-	m.Login()
+	//m.GetBlock()
+	if err := m.GetBlock(); err != nil {
+		global.Log.Error(err.Error())
+		return
+	}
+
+	if err := m.Login(); err != nil {
+		global.Log.Error(err.Error())
+		return
+	}
 	m.GetPlanId()
 	m.SignIn()
 }
@@ -92,17 +100,18 @@ func GenerateRandomFloat(baseIntegerPart int) float64 {
 	return float64(integerPart) + decimalPart
 }
 
-func (mo *MoguDing) GetBlock() {
+func (mo *MoguDing) GetBlock() error {
 	var maxRetries = 15
 	for attempts := 1; attempts <= maxRetries; attempts++ {
 		err := mo.processBlock()
 		if err == nil {
-			return
+			return nil
 		}
 		global.Log.Warning(fmt.Sprintf("Retrying captcha (%d/%d)", attempts, maxRetries))
 		time.Sleep(4 * time.Second)
 	}
 	global.Log.Error("Failed to process captcha after maximum retries")
+	return fmt.Errorf("failed to process captcha after maximum retries")
 }
 
 func (mo *MoguDing) processBlock() error {
@@ -166,7 +175,7 @@ func (mo *MoguDing) processBlock() error {
 	return nil
 }
 
-func (mogu *MoguDing) Login() {
+func (mogu *MoguDing) Login() error {
 	padding, _ := utils.NewAESECBPKCS5Padding(utils.MoGuKEY, "hex")
 	encryptPhone, _ := padding.Encrypt(mogu.PhoneNumber)
 	encryptPassword, _ := padding.Encrypt(mogu.Password)
@@ -190,7 +199,9 @@ func (mogu *MoguDing) Login() {
 	}
 	json.Unmarshal(body, &login)
 	if login.Code != 200 {
-		global.Log.Error("登录失败请检查账号密码: ", login.Msg)
+		global.Log.Error(login.Msg)
+		return fmt.Errorf(login.Msg)
+
 	}
 	decrypt, err := padding.Decrypt(login.Data)
 	json.Unmarshal([]byte(decrypt), &loginData)
@@ -205,6 +216,8 @@ func (mogu *MoguDing) Login() {
 	global.Log.Info(loginData.Phone)
 	global.Log.Info("================")
 	global.Log.Info("Login successful")
+
+	return nil
 }
 func (mogu *MoguDing) GetPlanId() {
 	var planData = &data.PlanByStuData{}
