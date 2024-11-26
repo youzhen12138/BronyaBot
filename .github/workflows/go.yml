@@ -33,10 +33,10 @@ jobs:
           GOOS=windows GOARCH=amd64 go build -o ./bin/BronyaBot-windows-amd64.exe .
           GOOS=darwin GOARCH=amd64 go build -o ./bin/BronyaBot-darwin-amd64 .
 
-#      # 打包源代码
-#      - name: Package Source Code
-#        run: |
-#          tar -czvf ./bin/BronyaBot-source.tar.gz .
+      # 打包源代码
+      - name: Package Source Code
+        run: |
+          tar -czvf ./bin/BronyaBot-source.tar.gz .
 
       # 创建 Git 标签
       - name: Create Git Tag
@@ -44,10 +44,6 @@ jobs:
           TAG_NAME=v$(date +'%Y%m%d%H%M%S')  # 使用当前时间戳创建标签
           git tag $TAG_NAME
           git push origin $TAG_NAME
-
-      # 确保标签已经同步
-      - name: Fetch Tags
-        run: git fetch --tags
 
       # 发布二进制文件和源代码到 GitHub Releases
       - name: Upload release assets
@@ -57,6 +53,6 @@ jobs:
             ./bin/BronyaBot-linux-amd64
             ./bin/BronyaBot-windows-amd64.exe
             ./bin/BronyaBot-darwin-amd64
-#            ./bin/BronyaBot-source.tar.gz
+            ./bin/BronyaBot-source.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
