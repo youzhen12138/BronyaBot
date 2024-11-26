@@ -1,13 +1,14 @@
-name: Go
+name: BronyaBot
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  # 手动触发的情况
+  workflow_dispatch:
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
@@ -28,23 +29,30 @@ jobs:
       - name: Build Binary
         run: |
           mkdir -p ./bin
-          GOOS=linux GOARCH=amd64 go build -o ./bin/myapp-linux-amd64 .
-          GOOS=windows GOARCH=amd64 go build -o ./bin/myapp-windows-amd64.exe .
-          GOOS=darwin GOARCH=amd64 go build -o ./bin/myapp-darwin-amd64 .
+          GOOS=linux GOARCH=amd64 go build -o ./bin/BronyaBot-linux-amd64 .
+          GOOS=windows GOARCH=amd64 go build -o ./bin/BronyaBot-windows-amd64.exe .
+          GOOS=darwin GOARCH=amd64 go build -o ./bin/BronyaBot-darwin-amd64 .
 
       # 打包源代码
-#      - name: Package Source Code
-#        run: |
-#          tar -czvf ./bin/myapp-source.tar.gz .
+      - name: Package Source Code
+        run: |
+          tar -czvf ./bin/BronyaBot-source.tar.gz .
+
+      # 创建 Git 标签
+      - name: Create Git Tag
+        run: |
+          TAG_NAME=v$(date +'%Y%m%d%H%M%S')  # 使用当前时间戳创建标签
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
 
       # 发布二进制文件和源代码到 GitHub Releases
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./bin/myapp-linux-amd64
-            ./bin/myapp-windows-amd64.exe
-            ./bin/myapp-darwin-amd64
-#            ./bin/myapp-source.tar.gz
+            ./bin/BronyaBot-linux-amd64
+            ./bin/BronyaBot-windows-amd64.exe
+            ./bin/BronyaBot-darwin-amd64
+            ./bin/BronyaBot-source.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
