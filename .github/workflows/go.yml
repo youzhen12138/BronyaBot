@@ -33,9 +33,9 @@ jobs:
           GOOS=darwin GOARCH=amd64 go build -o ./bin/myapp-darwin-amd64 .
 
       # 打包源代码
-      - name: Package Source Code
-        run: |
-          tar -czvf ./bin/myapp-source.tar.gz .
+#      - name: Package Source Code
+#        run: |
+#          tar -czvf ./bin/myapp-source.tar.gz .
 
       # 发布二进制文件和源代码到 GitHub Releases
       - name: Upload release assets
@@ -45,6 +45,6 @@ jobs:
             ./bin/myapp-linux-amd64
             ./bin/myapp-windows-amd64.exe
             ./bin/myapp-darwin-amd64
-            ./bin/myapp-source.tar.gz
+#            ./bin/myapp-source.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
