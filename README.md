@@ -51,6 +51,34 @@ logger:
 
 ---
 
+## 🗂️ 数据库表设计
+
+以下是用于存储工学云用户签到信息的表结构定义，包含基本的用户信息和签到状态字段,
+在数据库中执行以下 SQL 命令创建 工学云用户签到表：
+
+```sql
+-- 工学云用户签到表
+CREATE TABLE sign
+(
+    id        INT AUTO_INCREMENT PRIMARY KEY, -- 签到记录 ID (自增主键)
+    username  VARCHAR(255) NOT NULL,          -- 用户名
+    password  VARCHAR(255) NOT NULL,          -- 密码 (加密存储建议)
+    country   VARCHAR(255) DEFAULT NULL,      -- 国家
+    province  VARCHAR(255) DEFAULT NULL,      -- 省份
+    city      VARCHAR(255) DEFAULT NULL,      -- 城市
+    area      VARCHAR(255) DEFAULT NULL,      -- 区域
+    latitude  VARCHAR(255) DEFAULT NULL,      -- 纬度
+    longitude VARCHAR(255) DEFAULT NULL,      -- 经度
+    email     VARCHAR(255) DEFAULT NULL,      -- 用户邮箱
+    address   VARCHAR(255) DEFAULT NULL,      -- 完整地址
+    type      INT          DEFAULT 0,         -- 签到类型 (0: 普通签到, 1: 特殊签到等)
+    state     INT          DEFAULT 0          -- 签到状态 (0: 未签到, 1: 已签到)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+```
+
+---
+
 ## 🌟 主要模块说明
 
 | 模块      | 描述              | 状态     |
