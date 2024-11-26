@@ -45,6 +45,10 @@ jobs:
           git tag $TAG_NAME
           git push origin $TAG_NAME
 
+      # 确保标签已经同步
+      - name: Fetch Tags
+        run: git fetch --tags
+
       # 发布二进制文件和源代码到 GitHub Releases
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
