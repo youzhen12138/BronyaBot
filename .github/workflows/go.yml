@@ -17,17 +17,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 安装必要依赖
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev pkg-config
+#      # 安装必要依赖
+#      - name: Install dependencies
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install -y libasound2-dev pkg-config
 
       # 设置 Go 环境
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.23.1 # 设置 Go 版本为 1.23.1
+          go-version: 1.23.1 # 根据你的项目使用的 Go 版本调整
 
       # 缓存 Go 依赖
       - name: Cache Go modules
@@ -38,21 +38,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      # 切换到 BronyaBot 项目目录并安装依赖
+      # 切换到项目目录并安装依赖
       - name: Install dependencies
         run: |
-          cd ./BronyaBot
+          cd ./..
           go mod tidy
 
       # 构建项目
       - name: Build project
         run: |
-          cd ./BronyaBot
-          go build -o bronya-bot
+          cd ./..
+          go build -o yatori-go-console
 
       # 上传二进制文件作为 Artifact
       - name: Upload binary
         uses: actions/upload-artifact@v3
         with:
-          name: bronya-bot-binary
-          path: ./BronyaBot/bronya-bot
+          name: myapp-binary
+          path: ./..
