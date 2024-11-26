@@ -14,8 +14,8 @@ jobs:
 
     strategy:
       matrix:
-        goos: [linux, windows, darwin] # Darwin 是 macOS 的操作系统
-        goarch: [amd64, arm64]         # 架构选择 amd64 和 arm64
+        goos: [ linux, windows, darwin ] # Darwin 是 macOS 的操作系统
+        goarch: [ amd64, arm64 ]         # 架构选择 amd64 和 arm64
 
     steps:
       - name: Checkout code
@@ -43,6 +43,7 @@ jobs:
           mkdir -p ./bin/${{ matrix.goos }}-${{ matrix.goarch }}
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/${{ matrix.goos }}-${{ matrix.goarch }}/bronyaBot
           ls -al ./bin/${{ matrix.goos }}-${{ matrix.goarch }} # 确保有二进制文件
+          ls -al ./bin/
 
       - name: Upload binaries
         uses: actions/upload-artifact@v3
@@ -60,6 +61,7 @@ jobs:
       - name: Create GitHub release tag
         id: create_release
         run: |
+          ls -al ./bin/
           VERSION_TAG="BronyaBot-$(date +'%Y%m%d%H%M%S')"
           echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
           git config --global user.name "github-actions[bot]"
@@ -68,7 +70,6 @@ jobs:
           git push origin $VERSION_TAG
 
       - name: Create GitHub release and upload assets
-        run: ls -al ./bin/
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.VERSION_TAG }}
