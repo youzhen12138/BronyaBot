@@ -49,9 +49,8 @@ jobs:
       - name: Build project
         run: |
           ls -al
-#          cd ./..
-          go build -v ./...
-#          go build -o yatori-go-console
+          cd ./..
+          go build -o 
 
       # 上传二进制文件作为 Artifact
       - name: Upload binary
