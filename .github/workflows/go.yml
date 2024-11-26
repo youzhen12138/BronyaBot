@@ -201,6 +201,8 @@ jobs:
         run: |
           VERSION_TAG="BronyaBot-$(date +'%Y%m%d%H%M%S')" # 项目名 + 时间戳
           echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git tag $VERSION_TAG
           git push origin $VERSION_TAG
 
@@ -208,6 +210,7 @@ jobs:
       - name: Create GitHub release and upload assets
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ env.VERSION_TAG }} # 使用上面创建的标签
           files: ./bin/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
