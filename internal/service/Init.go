@@ -5,10 +5,7 @@ import (
 	"BronyaBot/internal/entity"
 	"BronyaBot/internal/service/cx_service"
 	"BronyaBot/internal/service/gongxueyun_service"
-	"context"
-	"golang.org/x/time/rate"
 	"sync"
-	"time"
 )
 
 type AppService struct {
@@ -36,44 +33,27 @@ func (svc *AppService) loadUsers() {
 		global.Log.Info("Users loaded successfully.")
 	}
 }
+
 func (svc *AppService) StartGongxueYun() {
 	global.Log.Info("Starting Gongxueyun module...")
-	concurrentLimit := 5                        // 最大并发数
-	sem := make(chan struct{}, concurrentLimit) // 信号量
+	// 创建一个 Mutex 来保证每次只有一个 goroutine 执行相关操作
+	var mu sync.Mutex
 	var wg sync.WaitGroup
-
-	// 创建限流器，每秒最多允许 1 个请求
-	limiter := rate.NewLimiter(rate.Every(time.Second), 1)
 
 	for _, user := range svc.users {
 		wg.Add(1)
 		go func(user entity.SignEntity) {
 			defer wg.Done()
-			// 获取信号量，限制并发数
-			sem <- struct{}{}
-			// 限制请求频率
-			if err := limiter.Wait(context.Background()); err != nil {
-				global.Log.Error("Error waiting for rate limiter:", err)
-				return
-			}
+			// 使用 Mutex 上锁，确保同一时间只有一个 goroutine 执行
+			mu.Lock()
 			// 执行用户的操作
 			ding := svc.createMoguDing(user)
 			ding.Run()
-			// 释放信号量
-			<-sem
+			defer mu.Unlock() // 确保执行完毕后解锁
 		}(user)
 	}
-
 	wg.Wait() // 等待所有 goroutine 完成
 }
-
-//func (svc *AppService) StartGongxueYun() {
-//	global.Log.Info("Starting Gongxueyun module...")
-//	for _, user := range svc.users {
-//		ding := svc.createMoguDing(user)
-//		ding.Run()
-//	}
-//}
 
 func (svc *AppService) StartTestCX() {
 	global.Log.Info("Starting CX test module...")
