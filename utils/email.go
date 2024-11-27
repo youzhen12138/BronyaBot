@@ -15,6 +15,7 @@ func SendMail(to, subject, body string) {
 		global.Log.Warning("邮件服务未初始化")
 		return
 	}
+
 	// 获取当前时间
 	currentTime := time.Now().Format("2006-01-02 15:04:05") // 格式化时间
 
@@ -33,4 +34,5 @@ func SendMail(to, subject, body string) {
 	} else {
 		global.Log.Info("邮件发送成功")
 	}
+
 }
