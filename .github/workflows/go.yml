@@ -63,7 +63,6 @@ jobs:
           -ldflags="-X 'main.Version=${{ github.ref_name }}' 
                     -X 'main.BuildDate=${{ env.BUILD_DATE }}'" 
           -o release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_windows_arm64.exe
-
       - name: Build macOS AMD64
         run: >
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build 
