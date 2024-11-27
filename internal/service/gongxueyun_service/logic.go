@@ -264,7 +264,7 @@ func (mogu *MoguDing) SignIn() {
 	json.Unmarshal(request, &resdata)
 	global.Log.Info("================")
 	global.Log.Info(resdata.Msg)
-	utils.SendMail(mogu.Email, "测试邮件，请勿回复", resdata.Msg)
+	utils.SendMail(mogu.Email, "检查是否打卡完成", resdata.Msg+"\n如果未成功请联系管理员")
 	global.Log.Info("================")
 }
 
