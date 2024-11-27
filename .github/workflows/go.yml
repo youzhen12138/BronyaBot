@@ -2,86 +2,109 @@ name: Go Build and Release
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    tags:
+      - 'v*'  # Trigger on version tags
+
+permissions:
+  contents: write  # Allow writing to GitHub releases
+
+env:
+  # 使用仓库名作为项目名
+  PROJECT_NAME: ${{ github.event.repository.name }}
+  # 获取当前日期
+  BUILD_DATE: ${{ github.ref_name }}-${{ github.run_id }}
 
 jobs:
   build:
+    name: Build and Release
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        goos: [linux, windows, darwin] # Darwin 是 macOS 的操作系统
-        goarch: [amd64, arm64]         # 架构选择 amd64 和 arm64
-
     steps:
-      # 检出代码
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整的 Git 历史
 
-      # 设置 Go 环境
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.23.1
+          go-version-file: 'go.mod'  # 使用 go.mod 文件指定 Go 版本
+          cache: true  # 启用依赖缓存
 
-      # 缓存 Go 依赖
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+      - name: Get dependencies
+        run: go mod download
 
-      # 安装 Go 依赖
-      - name: Install dependencies
+      - name: Prepare Release Directory
+        run: mkdir -p release
+
+      - name: Build Linux AMD64
+        run: >
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build 
+          -ldflags="-X 'main.Version=${{ github.ref_name }}' 
+                    -X 'main.BuildDate=${{ env.BUILD_DATE }}'" 
+          -o release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_linux_amd64
+
+      - name: Build Linux ARM64
+        run: >
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build 
+          -ldflags="-X 'main.Version=${{ github.ref_name }}' 
+                    -X 'main.BuildDate=${{ env.BUILD_DATE }}'" 
+          -o release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_linux_arm64
+
+      - name: Build Windows AMD64
+        run: >
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build 
+          -ldflags="-X 'main.Version=${{ github.ref_name }}' 
+                    -X 'main.BuildDate=${{ env.BUILD_DATE }}'" 
+          -o release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_windows_amd64.exe
+
+      - name: Build Windows ARM64
+        run: >
+          CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build 
+          -ldflags="-X 'main.Version=${{ github.ref_name }}' 
+                    -X 'main.BuildDate=${{ env.BUILD_DATE }}'" 
+          -o release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_windows_arm64.exe
+
+      - name: Build macOS AMD64
+        run: >
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build 
+          -ldflags="-X 'main.Version=${{ github.ref_name }}' 
+                    -X 'main.BuildDate=${{ env.BUILD_DATE }}'" 
+          -o release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_darwin_amd64
+
+      - name: Build macOS ARM64
+        run: >
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build 
+          -ldflags="-X 'main.Version=${{ github.ref_name }}' 
+                    -X 'main.BuildDate=${{ env.BUILD_DATE }}'" 
+          -o release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_darwin_arm64
+
+      - name: Create Source Code Tarball
         run: |
-          go mod tidy
+          tar -czvf release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_source.tar.gz \
+          --exclude=.git \
+          --exclude=release \
+          .
 
-      # 设置交叉编译
-      - name: Build project for ${{ matrix.goos }}-${{ matrix.goarch }}
+      - name: Create Source Code Zip
         run: |
-          mkdir -p ./bin/${{ matrix.goos }}-${{ matrix.goarch }}  # 确保创建 bin 目录
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ./bin/${{ matrix.goos }}-${{ matrix.goarch }}/bronyaBot
+          zip -r release/${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_source.zip \
+          . \
+          -x .git\* \
+          -x release\*
 
-      # 列出文件，检查二进制文件是否生成
-      - name: List files in ./bin
-        run: ls -al ./bin/
-
-      # 上传二进制文件和压缩包作为 Artifact
-      - name: Create tar.gz archive
+      - name: Generate SHA256 Checksums
         run: |
-          tar -czvf ./bin/${{ github.sha }}.tar.gz -C ./bin .
-      - name: Create zip archive
-        run: |
-          zip -r ./bin/${{ github.sha }}.zip ./bin
+          cd release
+          sha256sum * > ${{ env.PROJECT_NAME }}_${{ env.BUILD_DATE }}_checksums.txt
 
-      - name: Upload binaries and archives
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.VERSION_TAG }}
-          files: ./bin/* ./bin/${{ github.sha }}.tar.gz ./bin/${{ github.sha }}.zip
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         env:
+          # 使用 GitHub Token 进行身份验证和发布
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # 创建 GitHub Release 标签（项目名 + 时间戳）
-      - name: Create GitHub release tag
-        id: create_release
-        run: |
-          VERSION_TAG="BronyaBot-$(date +'%Y%m%d%H%M%S')" # 项目名 + 时间戳
-          echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag $VERSION_TAG
-          git push origin $VERSION_TAG
+        with:
+          files: |
+            release/*
+          generate_release_notes: true  # 自动生成发行说明
+          draft: false  # 不创建草稿
+          prerelease: false  # 不标记为预发布
