@@ -165,7 +165,7 @@ Star 趋势图
 
 ## 📧 联系我们
 
-如有问题或建议，请发送邮件至 [3092179918@qq.com]()。
+如有问题或建议，请 [点击链接](https://qm.qq.com/q/z8mab8YVm8)。
 
 快来试试吧！🎉 简化签到，从现在开始！
 
@@ -174,3 +174,4 @@ Star 趋势图
 ## 💵赞助我们
 
 <img src="https://github.com/user-attachments/assets/017c8856-ea97-4ab4-84e8-caed61b33268" width="400" height="450" />
+
