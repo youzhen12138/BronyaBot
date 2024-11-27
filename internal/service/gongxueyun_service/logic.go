@@ -109,7 +109,7 @@ func (mo *MoguDing) GetBlock() error {
 			return nil
 		}
 		global.Log.Warning(fmt.Sprintf("Retrying captcha (%d/%d)", attempts, maxRetries))
-		time.Sleep(6 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 	global.Log.Error("Failed to process captcha after maximum retries")
 	return fmt.Errorf("failed to process captcha after maximum retries")

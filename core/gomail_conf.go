@@ -28,6 +28,7 @@ func InitMail() *gomail.Dialer {
 		// 如果启用了 SSL，使用端口 465
 		dialer.Port = 465
 		dialer.TLSConfig = &tls.Config{
+			ServerName:         global.Config.Mail.Host,
 			InsecureSkipVerify: false, // 设置是否验证 SSL/TLS 证书
 		}
 	} else {
