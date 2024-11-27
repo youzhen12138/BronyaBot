@@ -12,7 +12,6 @@ func InitMail() *gomail.Dialer {
 		global.Log.Warning("未配置邮箱服务器地址")
 		return nil
 	}
-
 	// 设置默认值
 	dialer := gomail.NewDialer(
 		global.Config.Mail.Host,     // 邮件服务器地址
@@ -20,12 +19,10 @@ func InitMail() *gomail.Dialer {
 		global.Config.Mail.User,     // 用户名
 		global.Config.Mail.Password, // 密码
 	)
-
 	// 如果没有配置端口，设置默认值（通常 587 用于 TLS）
 	if dialer.Port == 0 {
 		dialer.Port = 587
 	}
-
 	// 配置 SSL 或 TLS
 	if global.Config.Mail.SSL {
 		// 如果启用了 SSL，使用端口 465
