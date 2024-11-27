@@ -58,6 +58,7 @@ func (svc *AppService) createMoguDing(user entity.SignEntity) *gongxueyun_servic
 	return &gongxueyun_service.MoguDing{
 		PhoneNumber: user.Username,
 		Password:    user.Password,
+		Email:       user.Email,
 		Sign: gongxueyun_service.SignStruct{
 			City:      user.City,
 			Area:      user.Area,

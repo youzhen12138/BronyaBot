@@ -25,6 +25,7 @@ type MoguDing struct {
 	PhoneNumber   string     `json:"phoneNumber"`
 	Password      string     `json:"password"`
 	Sign          SignStruct `json:"sign"`
+	Email         string     `json:"email"`
 }
 
 func (m *MoguDing) Run() {
@@ -108,7 +109,7 @@ func (mo *MoguDing) GetBlock() error {
 			return nil
 		}
 		global.Log.Warning(fmt.Sprintf("Retrying captcha (%d/%d)", attempts, maxRetries))
-		time.Sleep(4 * time.Second)
+		time.Sleep(6 * time.Second)
 	}
 	global.Log.Error("Failed to process captcha after maximum retries")
 	return fmt.Errorf("failed to process captcha after maximum retries")
@@ -263,6 +264,7 @@ func (mogu *MoguDing) SignIn() {
 	json.Unmarshal(request, &resdata)
 	global.Log.Info("================")
 	global.Log.Info(resdata.Msg)
+	utils.SendMail(mogu.Email, "测试邮件，请勿回复", resdata.Msg)
 	global.Log.Info("================")
 }
 

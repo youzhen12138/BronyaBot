@@ -1,10 +1,10 @@
 mysql:
   dataBase: autosign
   userName: root
-  passWord: 123456789
-  port: 1111
+  passWord: 123456
+  port: 8086
   driverName: mysql
-  host: localhost
+  host: url
   log-level: debug
   max-idle-conns: 10
   max-open-conns: 100
@@ -16,5 +16,10 @@ logger:
   director: log
   showLine: true
   logInConsole: true
-
-
+mail:
+  host: you-host
+  port: you-port
+  user: you-user
+  password: you-password
+  ssl: true
+  local-home:         #可选
