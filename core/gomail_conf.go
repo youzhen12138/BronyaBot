@@ -35,12 +35,12 @@ func InitMail() *gomail.Dialer {
 		}
 	} else {
 		// 否则使用默认的 TLS 配置
+		dialer.TLSConfig = &tls.Config{
+			ServerName:         global.Config.Mail.Host,
+			InsecureSkipVerify: false, // 默认不跳过验证
+		}
+	}
 
-	}
-	dialer.TLSConfig = &tls.Config{
-		ServerName:         global.Config.Mail.Host,
-		InsecureSkipVerify: false, // 默认不跳过验证
-	}
 	// 配置 LocalName（一般可以不设置，除非需要指定）
 	if global.Config.Mail.LocalName != "" {
 		dialer.LocalName = global.Config.Mail.LocalName
