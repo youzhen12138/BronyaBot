@@ -173,4 +173,4 @@ Star 趋势图
 
 ## 💵赞助我们
 
-![](C:\Users\mic\Desktop\36085ea8c28a76b1cc3a29784de5b280.jpg)
+![赞助码](https://github.com/user-attachments/assets/017c8856-ea97-4ab4-84e8-caed61b33268)
