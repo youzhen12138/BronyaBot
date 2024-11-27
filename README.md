@@ -61,6 +61,13 @@ logger:
   director: log
   showLine: true
   logInConsole: true
+mail:
+  host: you-host
+  port: you-port
+  user: you-user
+  password: you-password
+  ssl: true
+  local-home:           #可选
 ```
 
 ---
