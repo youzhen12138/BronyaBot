@@ -105,7 +105,6 @@ func GenerateRandomFloat(baseIntegerPart int) float64 {
 
 	return float64(integerPart) + decimalPart
 }
-
 func (mo *MoguDing) GetBlock() error {
 	var maxRetries = 15
 	for attempts := 1; attempts <= maxRetries; attempts++ {
@@ -119,7 +118,6 @@ func (mo *MoguDing) GetBlock() error {
 	global.Log.Error("Failed to process captcha after maximum retries")
 	return fmt.Errorf("failed to process captcha after maximum retries")
 }
-
 func (mo *MoguDing) processBlock() error {
 	// 获取验证码数据
 	requestData := map[string]string{
@@ -180,12 +178,12 @@ func (mo *MoguDing) processBlock() error {
 	comm.captcha = encrypt
 	return nil
 }
-
 func (mogu *MoguDing) Login() error {
 	padding, _ := utils.NewAESECBPKCS5Padding(utils.MoGuKEY, "hex")
 	encryptPhone, _ := padding.Encrypt(mogu.PhoneNumber)
 	encryptPassword, _ := padding.Encrypt(mogu.Password)
-	encryptTime, _ := padding.Encrypt(strconv.FormatInt(time.Now().UnixMilli(), 10))
+	timestamp, _ := encryptTimestamp(time.Now().UnixMilli())
+
 	global.Log.Info("Login")
 	requestData := map[string]string{
 		"phone":     encryptPhone,
@@ -195,7 +193,7 @@ func (mogu *MoguDing) Login() error {
 		"uuid":      clientUid,
 		"device":    "android",
 		"version":   "5.15.0",
-		"t":         encryptTime,
+		"t":         timestamp,
 	}
 	var login = &data.Login{}
 	var loginData = &data.LoginData{}
@@ -225,9 +223,7 @@ func (mogu *MoguDing) Login() error {
 }
 func (mogu *MoguDing) GetPlanId() {
 	var planData = &data.PlanByStuData{}
-
-	padding, _ := utils.NewAESECBPKCS5Padding(utils.MoGuKEY, "hex")
-	encryptTime, _ := padding.Encrypt(strconv.FormatInt(time.Now().UnixMilli(), 10))
+	timestamp, _ := encryptTimestamp(time.Now().UnixMilli())
 
 	sign := utils.CreateSign(mogu.UserId, mogu.RoleKey)
 
@@ -236,7 +232,7 @@ func (mogu *MoguDing) GetPlanId() {
 	addHeader("authorization", mogu.Authorization)
 	body := map[string]string{
 		"pageSize": strconv.Itoa(999999),
-		"t":        encryptTime,
+		"t":        timestamp,
 	}
 	request, err := utils.SendRequest("POST", api.BaseApi+api.GetPlanIDAPI, body, headers)
 	if err != nil {
@@ -306,50 +302,41 @@ func dataStructureFilling(mogu *MoguDing) map[string]string {
 	}
 
 	// 加密当前时间戳
-	padding, err := utils.NewAESECBPKCS5Padding(utils.MoGuKEY, "hex")
-	if err != nil {
-		global.Log.Error("Failed to initialize padding: ", err)
-		return nil
-	}
-
-	encryptTime, err := padding.Encrypt(strconv.FormatInt(now.UnixMilli(), 10))
+	encryptTime, err := encryptTimestamp(now.UnixMilli())
 	if err != nil {
 		global.Log.Error("Failed to encrypt timestamp: ", err)
 		return nil
 	}
 
-	// 构造数据结构
-	structuredData := data.SaveStructuredData{
-		Address:    mogu.Sign.Address,
-		City:       mogu.Sign.City,
-		Area:       mogu.Sign.Area,
-		Country:    mogu.Sign.Country,
-		CreateTime: formattedTime,
-		Device:     "{brand: Redmi Note 5, systemVersion: 14, Platform: Android}",
-		//维度
-		Latitude:  mogu.Sign.Latitude,
-		Longitude: mogu.Sign.Longitude,
-		Province:  mogu.Sign.Province,
-		State:     "NORMAL",
-		Type:      typeStr,
-		UserId:    mogu.UserId,
-		T:         encryptTime,
-		PlanId:    mogu.PlanID,
+	// 直接构造 map，而不是先构造结构体再转换为 map
+	return map[string]string{
+		"address":    mogu.Sign.Address,
+		"city":       mogu.Sign.City,
+		"area":       mogu.Sign.Area,
+		"country":    mogu.Sign.Country,
+		"createTime": formattedTime,
+		"device":     "{brand: Redmi Note 5, systemVersion: 14, Platform: Android}",
+		"latitude":   mogu.Sign.Latitude,
+		"longitude":  mogu.Sign.Longitude,
+		"province":   mogu.Sign.Province,
+		"state":      "NORMAL",
+		"type":       typeStr,
+		"userId":     mogu.UserId,
+		"t":          encryptTime,
+		"planId":     mogu.PlanID,
 	}
+}
 
-	// 转换为 JSON
-	jsonData, err := json.Marshal(structuredData)
+// 加密时间戳的通用方法
+func encryptTimestamp(timestamp int64) (string, error) {
+	padding, err := utils.NewAESECBPKCS5Padding(utils.MoGuKEY, "hex")
 	if err != nil {
-		global.Log.Error("Failed to marshal structuredData: ", err)
-		return nil
+		return "", fmt.Errorf("failed to initialize padding: %v", err)
 	}
 
-	// 转换为 map
-	newMap := make(map[string]string)
-	if err := json.Unmarshal(jsonData, &newMap); err != nil {
-		global.Log.Error("Failed to unmarshal jsonData to map: ", err)
-		return nil
+	encryptTime, err := padding.Encrypt(strconv.FormatInt(timestamp, 10))
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt timestamp: %v", err)
 	}
-
-	return newMap
+	return encryptTime, nil
 }
