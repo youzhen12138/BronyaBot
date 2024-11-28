@@ -33,13 +33,11 @@ func (svc *AppService) loadUsers() {
 		global.Log.Info("Users loaded successfully.")
 	}
 }
-
 func (svc *AppService) StartGongxueYun() {
 	global.Log.Info("Starting Gongxueyun module...")
 	// 创建一个 Mutex 来保证每次只有一个 goroutine 执行相关操作
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-
 	for _, user := range svc.users {
 		wg.Add(1)
 		go func(user entity.SignEntity) {
@@ -70,6 +68,7 @@ func (svc *AppService) StartTestCX() {
 
 func (svc *AppService) createMoguDing(user entity.SignEntity) *gongxueyun_service.MoguDing {
 	return &gongxueyun_service.MoguDing{
+		ID:          user.ID,
 		PhoneNumber: user.Username,
 		Password:    user.Password,
 		Email:       user.Email,

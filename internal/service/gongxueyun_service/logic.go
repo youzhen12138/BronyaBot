@@ -3,6 +3,7 @@ package gongxueyun_service
 import (
 	"BronyaBot/global"
 	"BronyaBot/internal/api"
+	"BronyaBot/internal/entity"
 	"BronyaBot/internal/service/gongxueyun_service/data"
 	"BronyaBot/utils"
 	"BronyaBot/utils/blockPuzzle"
@@ -17,6 +18,7 @@ import (
 )
 
 type MoguDing struct {
+	ID            int        `json:"ID"`
 	UserId        string     `json:"userId"`
 	RoleKey       string     `json:"roleKey"`
 	Authorization string     `json:"authorization"`
@@ -32,11 +34,13 @@ func (m *MoguDing) Run() {
 	global.Log.Infof("Starting sign-in process for user: %s", m.PhoneNumber)
 	//m.GetBlock()
 	if err := m.GetBlock(); err != nil {
+		utils.SendMail(m.Email, "Block-Error", err.Error())
 		global.Log.Error(err.Error())
 		return
 	}
 
 	if err := m.Login(); err != nil {
+		utils.SendMail(m.Email, "Login-Error-测试邮件请勿回复", err.Error())
 		global.Log.Error(err.Error())
 		return
 	}
@@ -201,7 +205,6 @@ func (mogu *MoguDing) Login() error {
 	}
 	json.Unmarshal(body, &login)
 	if login.Code != 200 {
-		global.Log.Error(login.Msg)
 		return fmt.Errorf(login.Msg)
 
 	}
@@ -218,7 +221,6 @@ func (mogu *MoguDing) Login() error {
 	global.Log.Info(loginData.Phone)
 	global.Log.Info("================")
 	global.Log.Info("Login successful")
-
 	return nil
 }
 func (mogu *MoguDing) GetPlanId() {
@@ -262,13 +264,29 @@ func (mogu *MoguDing) SignIn() {
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
+
 	json.Unmarshal(request, &resdata)
 	global.Log.Info("================")
 	global.Log.Info(resdata.Msg)
-	utils.SendMail(mogu.Email, "检查是否打卡完成", resdata.Msg+"\n如果未成功请联系管理员")
 	global.Log.Info("================")
-}
+	if resdata.Msg == "success" {
+		mogu.updateSignState(1)
+	} else {
+		mogu.updateSignState(0)
+	}
 
+	utils.SendMail(mogu.Email, "检查是否打卡完成", resdata.Msg+"\n如果未成功请联系管理员")
+
+}
+func (mogu *MoguDing) updateSignState(state int) {
+	// 更新数据库表中的 state 字段
+	err := global.DB.Model(&entity.SignEntity{}).Where("username = ?", mogu.PhoneNumber).Update("state", state).Error
+	if err != nil {
+		global.Log.Error(fmt.Sprintf("Failed to update state for user %s: %v", mogu.PhoneNumber, err))
+	} else {
+		global.Log.Info(fmt.Sprintf("Successfully updated state for user %s to %d", mogu.PhoneNumber, state))
+	}
+}
 func dataStructureFilling(mogu *MoguDing) map[string]string {
 	// 加载中国时区
 	loc, err := time.LoadLocation("Asia/Shanghai")
