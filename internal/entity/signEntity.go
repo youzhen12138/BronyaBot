@@ -15,6 +15,7 @@ type SignEntity struct {
 	Address   string `gorm:"column:address"`
 	Type      int    `gorm:"not null;default:0;column:type"`  // 非空，默认值
 	State     int    `gorm:"not null;default:0;column:state"` // 非空，默认值
+	Token     string `gorm:"column:token"`
 }
 
 // TableName 指定表名
