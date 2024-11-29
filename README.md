@@ -159,7 +159,9 @@ Star 趋势图
 让 BronyaBot 成为你学习路上的得力助手！🎉 签到从此无忧！
 
 ![GitHub Stars](https://img.shields.io/github/stars/mirai-MIC/BronyaBot?style=flat&label=Stars)
-[![Star History Chart](https://api.star-history.com/svg?repos=mirai-MIC/BronyaBot&type=Date)](https://star-history.com/#mirai-MIC/BronyaBot&Date)
+
+[//]: # ([![Star History Chart]&#40;https://api.star-history.com/svg?repos=mirai-MIC/BronyaBot&type=Date&#41;]&#40;https://star-history.com/#mirai-MIC/BronyaBot&Date&#41;)
+[![Star History Chart](https://starchart.cc/mirai-MIC/BronyaBot.svg?variant=adaptive)](https://starchart.cc/mirai-MIC/BronyaBot)
 
 ---
 

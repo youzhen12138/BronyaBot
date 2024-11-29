@@ -283,6 +283,10 @@ func (mogu *MoguDing) updateSignState(state int) {
 		global.Log.Info(fmt.Sprintf("Successfully updated state for user %s to %d", mogu.PhoneNumber, state))
 	}
 }
+
+func (mogu *MoguDing) weeklyNewspaper() {
+
+}
 func dataStructureFilling(mogu *MoguDing) map[string]string {
 	// 加载中国时区
 	loc, err := time.LoadLocation("Asia/Shanghai")
