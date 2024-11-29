@@ -46,6 +46,7 @@ func (m *MoguDing) Run() {
 	}
 	m.GetPlanId()
 	m.SignIn()
+	//m.getSubmittedReportsInfo("week")
 }
 
 type SignStruct struct {
@@ -120,7 +121,7 @@ func (mo *MoguDing) GetBlock() error {
 }
 func (mo *MoguDing) processBlock() error {
 	// 获取验证码数据
-	requestData := map[string]string{
+	requestData := map[string]interface{}{
 		"clientUid":   clientUid,
 		"captchaType": "blockPuzzle",
 	}
@@ -151,7 +152,7 @@ func (mo *MoguDing) processBlock() error {
 	comm.secretKey = blockData.Data.SecretKey
 	cipher, _ := utils.NewAESECBPKCS5Padding(comm.secretKey, "base64")
 	encrypt, _ := cipher.Encrypt(comm.xY)
-	requestData = map[string]string{
+	requestData = map[string]interface{}{
 		"pointJson":   encrypt,
 		"token":       blockData.Data.Token,
 		"captchaType": "blockPuzzle",
@@ -183,9 +184,7 @@ func (mogu *MoguDing) Login() error {
 	encryptPhone, _ := padding.Encrypt(mogu.PhoneNumber)
 	encryptPassword, _ := padding.Encrypt(mogu.Password)
 	timestamp, _ := encryptTimestamp(time.Now().UnixMilli())
-
-	global.Log.Info("Login")
-	requestData := map[string]string{
+	requestData := map[string]interface{}{
 		"phone":     encryptPhone,
 		"password":  encryptPassword,
 		"captcha":   comm.captcha,
@@ -222,15 +221,13 @@ func (mogu *MoguDing) Login() error {
 	return nil
 }
 func (mogu *MoguDing) GetPlanId() {
-	var planData = &data.PlanByStuData{}
+	planData := &data.PlanByStuData{}
 	timestamp, _ := encryptTimestamp(time.Now().UnixMilli())
-
 	sign := utils.CreateSign(mogu.UserId, mogu.RoleKey)
-
 	addHeader("rolekey", mogu.RoleKey)
 	addHeader("sign", sign)
 	addHeader("authorization", mogu.Authorization)
-	body := map[string]string{
+	body := map[string]interface{}{
 		"pageSize": strconv.Itoa(999999),
 		"t":        timestamp,
 	}
@@ -247,13 +244,12 @@ func (mogu *MoguDing) GetPlanId() {
 	global.Log.Info(mogu.PlanID)
 	global.Log.Info(mogu.PlanName)
 	global.Log.Info("================")
-	global.Log.Info(fmt.Sprintf("Get plan id successful"))
 }
 func (mogu *MoguDing) SignIn() {
-	var resdata = &data.SaveData{}
+	resdata := &data.SaveData{}
 	filling := dataStructureFilling(mogu)
-	sign := utils.CreateSign(filling["device"], filling["type"], mogu.PlanID, mogu.UserId, filling["address"])
-	addHeader("rolekey", mogu.UserId)
+	sign := utils.CreateSign(filling["device"].(string), filling["type"].(string), mogu.PlanID, mogu.UserId, filling["address"].(string))
+	addHeader("rolekey", mogu.RoleKey)
 	addHeader("sign", sign)
 	addHeader("authorization", mogu.Authorization)
 	request, err := utils.SendRequest("POST", api.BaseApi+api.SignAPI, filling, headers)
@@ -270,7 +266,6 @@ func (mogu *MoguDing) SignIn() {
 	} else {
 		mogu.updateSignState(0)
 	}
-
 	utils.SendMail(mogu.Email, "检查是否打卡完成", resdata.Msg+"\n如果未成功请联系管理员")
 
 }
@@ -284,17 +279,35 @@ func (mogu *MoguDing) updateSignState(state int) {
 	}
 }
 
-func (mogu *MoguDing) weeklyNewspaper() {
-
+// 获取已经提交的日报、周报或月报的数量。
+func (mogu *MoguDing) getSubmittedReportsInfo(reportType string) {
+	report := &data.ReportsInfo{}
+	sign := utils.CreateSign(mogu.UserId, mogu.RoleKey, reportType)
+	addHeader("rolekey", mogu.RoleKey)
+	addHeader("userid", mogu.UserId)
+	addHeader("sign", sign)
+	timestamp, _ := encryptTimestamp(time.Now().UnixMilli())
+	body := map[string]interface{}{
+		"currPage":   1,
+		"pageSize":   10,
+		"reportType": reportType,
+		"planId":     mogu.PlanID,
+		"t":          timestamp,
+	}
+	request, err := utils.SendRequest("POST", api.BaseApi+api.GetWeekCountAPI, body, headers)
+	if err != nil {
+		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
+	}
+	json.Unmarshal(request, &report)
+	global.Log.Info(report)
 }
-func dataStructureFilling(mogu *MoguDing) map[string]string {
+func dataStructureFilling(mogu *MoguDing) map[string]interface{} {
 	// 加载中国时区
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
 		global.Log.Error("Failed to load location: ", err)
 		return nil
 	}
-
 	// 获取当前时间并格式化
 	now := time.Now().In(loc)
 	formattedTime := now.Format("2006-01-02 15:04:05")
@@ -304,16 +317,14 @@ func dataStructureFilling(mogu *MoguDing) map[string]string {
 	if now.Hour() >= 12 {
 		typeStr = "END"
 	}
-
 	// 加密当前时间戳
 	encryptTime, err := encryptTimestamp(now.UnixMilli())
 	if err != nil {
 		global.Log.Error("Failed to encrypt timestamp: ", err)
 		return nil
 	}
-
 	// 直接构造 map，而不是先构造结构体再转换为 map
-	return map[string]string{
+	return map[string]interface{}{
 		"address":    mogu.Sign.Address,
 		"city":       mogu.Sign.City,
 		"area":       mogu.Sign.Area,

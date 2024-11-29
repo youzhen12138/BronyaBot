@@ -11,7 +11,7 @@ import (
 
 var client = &http.Client{}
 
-func SendRequest(method, url string, payload map[string]string, header http.Header) ([]byte, error) {
+func SendRequest(method, url string, payload map[string]interface{}, header http.Header) ([]byte, error) {
 	marshal, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %v", err)
