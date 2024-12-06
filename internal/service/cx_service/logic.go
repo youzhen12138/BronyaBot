@@ -6,7 +6,7 @@ import (
 	"BronyaBot/internal/service/cx_service/data"
 	"BronyaBot/utils"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,7 +18,17 @@ type CxLogic struct {
 	Password string
 }
 
+func (cx *CxLogic) Run() {
+	global.Log.Info("Starting CX test module...")
+	if err := cx.Login(); err != nil {
+		global.Log.Error("CX login failed:", err)
+		return
+	}
+	cx.PullCourse()
+}
+
 func (c *CxLogic) Login() error {
+
 	global.Log.Info("=====开始登录=====")
 	phone, _ := utils.AESCBCEncrypt([]byte(c.Phone))
 	password, _ := utils.AESCBCEncrypt([]byte(c.Password))
@@ -38,7 +48,7 @@ func (c *CxLogic) Login() error {
 	}
 	defer postres.Body.Close()
 	var jsonContent map[string]interface{}
-	body, _ := ioutil.ReadAll(postres.Body)
+	body, _ := io.ReadAll(postres.Body)
 	json.Unmarshal(body, &jsonContent)
 	if jsonContent["status"] == false {
 		global.Log.Errorf("登录失败 %t", jsonContent["status"])
@@ -66,7 +76,7 @@ func (c *CxLogic) PullCourse() {
 	}
 	pull := data.Course{}
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		global.Log.Error(err.Error())
 	}

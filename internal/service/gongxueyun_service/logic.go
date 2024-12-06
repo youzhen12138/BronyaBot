@@ -10,25 +10,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	"math"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
 )
-
-type MoguDing struct {
-	ID            int        `json:"ID"`
-	UserId        string     `json:"userId"`
-	RoleKey       string     `json:"roleKey"`
-	Authorization string     `json:"authorization"`
-	PlanID        string     `json:"planId"`
-	PlanName      string     `json:"planName"`
-	PhoneNumber   string     `json:"phoneNumber"`
-	Password      string     `json:"password"`
-	Sign          SignStruct `json:"sign"`
-	Email         string     `json:"email"`
-}
 
 func (m *MoguDing) Run() {
 	global.Log.Infof("Starting sign-in process for user: %s", m.PhoneNumber)
@@ -45,25 +30,14 @@ func (m *MoguDing) Run() {
 		return
 	}
 	m.GetPlanId()
-	m.SignIn()
-	//m.getSubmittedReportsInfo("week")
-}
 
-type SignStruct struct {
-	//	构造签到信息
-	Address   string `json:"address"`
-	City      string `json:"city"`
-	Area      string `json:"area"`
-	Country   string `json:"country"`
-	Latitude  string `json:"latitude"`
-	Longitude string `json:"longitude"`
-	Province  string `json:"province"`
-}
-type commonParameters struct {
-	token     string
-	secretKey string
-	xY        string
-	captcha   string
+	if err := m.GetJobInfo(); err != nil {
+		global.Log.Error(err.Error())
+		return
+	}
+	m.SignIn()
+	m.getSubmittedReportsInfo("week")
+	m.getSubmittedReportsInfo("month")
 }
 
 var headers = map[string][]string{
@@ -72,7 +46,6 @@ var headers = map[string][]string{
 	"host":         {"api.moguding.net:9000"},
 }
 var clientUid = strings.ReplaceAll(uuid.New().String(), "-", "")
-var comm = &commonParameters{}
 
 func addHeader(key, value string) {
 	// 检查 key 是否已经存在，若存在则追加到对应的值
@@ -84,28 +57,7 @@ func addHeader(key, value string) {
 		headers[key] = []string{value}
 	}
 }
-func GenerateRandomFloat(baseIntegerPart int) float64 {
-	rand.Seed(time.Now().UnixNano())
 
-	// Randomly adjust the integer part by ±1
-	adjustment := rand.Intn(4) - 1 // Generates -1, 0, or 1
-	integerPart := baseIntegerPart + adjustment
-
-	// Calculate the maximum number of decimal places based on the integer part's length
-	intPartLength := len(fmt.Sprintf("%d", integerPart))
-	totalLength := rand.Intn(10) + 10 // Total length between 10 and 19
-	decimalPlaces := totalLength - intPartLength
-
-	if decimalPlaces <= 0 {
-		decimalPlaces = 1 // Ensure at least one decimal place
-	}
-
-	// Generate a random decimal value with the specified number of decimal places
-	decimalPart := rand.Float64() * math.Pow(10, float64(decimalPlaces))
-	decimalPart = math.Trunc(decimalPart) / math.Pow(10, float64(decimalPlaces)) // Truncate to avoid floating-point imprecision
-
-	return float64(integerPart) + decimalPart
-}
 func (mo *MoguDing) GetBlock() error {
 	var maxRetries = 15
 	for attempts := 1; attempts <= maxRetries; attempts++ {
@@ -147,11 +99,12 @@ func (mo *MoguDing) processBlock() error {
 	global.Log.Info(fmt.Sprintf("Captcha matched at: xY=%s", xY))
 
 	marshal, err := json.Marshal(xY)
-	comm.xY = string(marshal)
-	comm.token = blockData.Data.Token
-	comm.secretKey = blockData.Data.SecretKey
-	cipher, _ := utils.NewAESECBPKCS5Padding(comm.secretKey, "base64")
-	encrypt, _ := cipher.Encrypt(comm.xY)
+
+	mo.CommParameters.xY = string(marshal)
+	mo.CommParameters.token = blockData.Data.Token
+	mo.CommParameters.secretKey = blockData.Data.SecretKey
+	cipher, _ := utils.NewAESECBPKCS5Padding(mo.CommParameters.secretKey, "base64")
+	encrypt, _ := cipher.Encrypt(mo.CommParameters.xY)
 	requestData = map[string]interface{}{
 		"pointJson":   encrypt,
 		"token":       blockData.Data.Token,
@@ -172,22 +125,22 @@ func (mo *MoguDing) processBlock() error {
 	}
 	global.Log.Info("Captcha verification successful")
 	padding, _ := utils.NewAESECBPKCS5Padding(blockData.Data.SecretKey, "base64")
-	encrypt, err = padding.Encrypt(jsonContent.Data.Token + "---" + comm.xY)
+	encrypt, err = padding.Encrypt(jsonContent.Data.Token + "---" + mo.CommParameters.xY)
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to encrypt captcha: %v", err))
 	}
-	comm.captcha = encrypt
+	mo.CommParameters.captcha = encrypt
 	return nil
 }
 func (mogu *MoguDing) Login() error {
 	padding, _ := utils.NewAESECBPKCS5Padding(utils.MoGuKEY, "hex")
 	encryptPhone, _ := padding.Encrypt(mogu.PhoneNumber)
 	encryptPassword, _ := padding.Encrypt(mogu.Password)
-	timestamp, _ := encryptTimestamp(time.Now().UnixMilli())
+	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
 	requestData := map[string]interface{}{
 		"phone":     encryptPhone,
 		"password":  encryptPassword,
-		"captcha":   comm.captcha,
+		"captcha":   mogu.CommParameters.captcha,
 		"loginType": "android",
 		"uuid":      clientUid,
 		"device":    "android",
@@ -210,6 +163,10 @@ func (mogu *MoguDing) Login() error {
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to decrypt data: %v", err))
 	}
+	if loginData.Phone == "" {
+		mogu.Run()
+		return nil
+	}
 	mogu.RoleKey = loginData.RoleKey
 	mogu.UserId = loginData.UserId
 	mogu.Authorization = loginData.Token
@@ -222,7 +179,7 @@ func (mogu *MoguDing) Login() error {
 }
 func (mogu *MoguDing) GetPlanId() {
 	planData := &data.PlanByStuData{}
-	timestamp, _ := encryptTimestamp(time.Now().UnixMilli())
+	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
 	sign := utils.CreateSign(mogu.UserId, mogu.RoleKey)
 	addHeader("rolekey", mogu.RoleKey)
 	addHeader("sign", sign)
@@ -245,9 +202,29 @@ func (mogu *MoguDing) GetPlanId() {
 	global.Log.Info(mogu.PlanName)
 	global.Log.Info("================")
 }
+func (mogu *MoguDing) GetJobInfo() error {
+	job := &data.JobInfoData{}
+	addHeader("rolekey", mogu.RoleKey)
+	addHeader("authorization", mogu.Authorization)
+	addHeader("userid", mogu.UserId)
+	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
+	body := map[string]interface{}{
+		"planId": mogu.PlanID,
+		"t":      timestamp,
+	}
+	request, err := utils.SendRequest("POST", api.BaseApi+api.GetJobInfoAPI, body, headers)
+	if err != nil {
+		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
+	}
+	json.Unmarshal(request, &job)
+	if job.Data.JobId == "" {
+		return fmt.Errorf("job info not found")
+	}
+	return nil
+}
 func (mogu *MoguDing) SignIn() {
 	resdata := &data.SaveData{}
-	filling := dataStructureFilling(mogu)
+	filling := DataStructureFilling(mogu)
 	sign := utils.CreateSign(filling["device"].(string), filling["type"].(string), mogu.PlanID, mogu.UserId, filling["address"].(string))
 	addHeader("rolekey", mogu.RoleKey)
 	addHeader("sign", sign)
@@ -286,7 +263,7 @@ func (mogu *MoguDing) getSubmittedReportsInfo(reportType string) {
 	addHeader("rolekey", mogu.RoleKey)
 	addHeader("userid", mogu.UserId)
 	addHeader("sign", sign)
-	timestamp, _ := encryptTimestamp(time.Now().UnixMilli())
+	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
 	body := map[string]interface{}{
 		"currPage":   1,
 		"pageSize":   10,
@@ -301,57 +278,9 @@ func (mogu *MoguDing) getSubmittedReportsInfo(reportType string) {
 	json.Unmarshal(request, &report)
 	global.Log.Info(report)
 }
-func dataStructureFilling(mogu *MoguDing) map[string]interface{} {
-	// 加载中国时区
-	loc, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		global.Log.Error("Failed to load location: ", err)
-		return nil
-	}
-	// 获取当前时间并格式化
-	now := time.Now().In(loc)
-	formattedTime := now.Format("2006-01-02 15:04:05")
 
-	// 确定打卡类型
-	typeStr := "START"
-	if now.Hour() >= 12 {
-		typeStr = "END"
-	}
-	// 加密当前时间戳
-	encryptTime, err := encryptTimestamp(now.UnixMilli())
-	if err != nil {
-		global.Log.Error("Failed to encrypt timestamp: ", err)
-		return nil
-	}
-	// 直接构造 map，而不是先构造结构体再转换为 map
-	return map[string]interface{}{
-		"address":    mogu.Sign.Address,
-		"city":       mogu.Sign.City,
-		"area":       mogu.Sign.Area,
-		"country":    mogu.Sign.Country,
-		"createTime": formattedTime,
-		"device":     "{brand: Redmi Note 5, systemVersion: 14, Platform: Android}",
-		"latitude":   mogu.Sign.Latitude,
-		"longitude":  mogu.Sign.Longitude,
-		"province":   mogu.Sign.Province,
-		"state":      "NORMAL",
-		"type":       typeStr,
-		"userId":     mogu.UserId,
-		"t":          encryptTime,
-		"planId":     mogu.PlanID,
-	}
-}
+// SubmitReport
+// 提交定时报告
+func (mogu *MoguDing) SubmitReport() {
 
-// 加密时间戳的通用方法
-func encryptTimestamp(timestamp int64) (string, error) {
-	padding, err := utils.NewAESECBPKCS5Padding(utils.MoGuKEY, "hex")
-	if err != nil {
-		return "", fmt.Errorf("failed to initialize padding: %v", err)
-	}
-
-	encryptTime, err := padding.Encrypt(strconv.FormatInt(timestamp, 10))
-	if err != nil {
-		return "", fmt.Errorf("failed to encrypt timestamp: %v", err)
-	}
-	return encryptTime, nil
 }

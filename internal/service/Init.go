@@ -17,9 +17,6 @@ func NewAppService() *AppService {
 }
 
 func (svc *AppService) Init() {
-	// 加载用户数据
-	svc.loadUsers()
-
 	// 启动各模块服务
 	svc.StartGongxueYun()
 	//svc.StartTestCX()
@@ -34,6 +31,7 @@ func (svc *AppService) loadUsers() {
 	}
 }
 func (svc *AppService) StartGongxueYun() {
+	svc.loadUsers()
 	global.Log.Info("Starting Gongxueyun module...")
 	// 创建一个 Mutex 来保证每次只有一个 goroutine 执行相关操作
 	var mu sync.Mutex
@@ -54,16 +52,8 @@ func (svc *AppService) StartGongxueYun() {
 }
 
 func (svc *AppService) StartTestCX() {
-	global.Log.Info("Starting CX test module...")
-	logic := cx_service.CxLogic{
-		Phone:    "1111111",
-		Password: "1111111",
-	}
-	if err := logic.Login(); err != nil {
-		global.Log.Error("CX login failed:", err)
-		return
-	}
-	logic.PullCourse()
+	cxLogic := cx_service.CxLogic{}
+	cxLogic.Run()
 }
 
 func (svc *AppService) createMoguDing(user entity.SignEntity) *gongxueyun_service.MoguDing {
@@ -72,7 +62,7 @@ func (svc *AppService) createMoguDing(user entity.SignEntity) *gongxueyun_servic
 		PhoneNumber: user.Username,
 		Password:    user.Password,
 		Email:       user.Email,
-		Sign: gongxueyun_service.SignStruct{
+		Sign: gongxueyun_service.SignInfo{
 			City:      user.City,
 			Area:      user.Area,
 			Address:   user.Address,
