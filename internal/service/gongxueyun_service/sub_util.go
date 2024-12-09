@@ -2,8 +2,10 @@ package gongxueyun_service
 
 import (
 	"BronyaBot/global"
+	"BronyaBot/internal/api"
 	"BronyaBot/internal/service/gongxueyun_service/data"
 	"BronyaBot/utils"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
@@ -70,20 +72,22 @@ func DataStructureFilling(mogu *MoguDing) map[string]interface{} {
 	}
 }
 func SubmitStructureFilling(mogu *MoguDing, content string, title string, Retype string) map[string]interface{} {
-	formattedTime, err := GetFormattedTime()
-	if err != nil {
-		global.Log.Error("Failed to get formatted time: ", err)
-	}
+	//formattedTime, err := GetFormattedTime()
+	//if err != nil {
+	//	global.Log.Error("Failed to get formatted time: ", err)
+	//}
 	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
 	submitData := data.SubmitData{
-		CreateTime: nil,
+		Weeks:      mogu.WeekTime.Week,
 		Content:    content,
 		PlanId:     mogu.PlanID,
 		ReportType: Retype,
-		ReportTime: formattedTime,
-		Title:      title,
-		JobId:      mogu.CommParameters.JobId,
-		T:          timestamp,
+		//ReportTime: formattedTime,
+		Title:     title,
+		JobId:     mogu.CommParameters.JobId,
+		T:         timestamp,
+		StartTime: mogu.WeekTime.StartTime,
+		EndTime:   mogu.WeekTime.EndTime,
 	}
 	return data.SubmitDataFunc(submitData)
 }
@@ -123,4 +127,47 @@ func GenerateRandomFloat(baseIntegerPart int) float64 {
 	decimalPart = math.Trunc(decimalPart) / math.Pow(10, float64(decimalPlaces)) // Truncate to avoid floating-point imprecision
 
 	return float64(integerPart) + decimalPart
+}
+func GenerateReportAI(userInput string, wordLimit int) string {
+	// Define request data
+	resdata := &data.AIData{}
+
+	headers := map[string][]string{
+		"Content-Type":  {"application/json"},
+		"Authorization": {"Bearer " + global.Config.AI.Token},
+	}
+	data := map[string]interface{}{
+		"max_tokens":  4096,
+		"top_k":       4,
+		"temperature": 0.5,
+		"messages": []map[string]string{
+
+			{
+				"role":    "user",
+				"content": fmt.Sprintf("According to the information provided by the user, write an article strictly according to the template. Do not use Markdown syntax, HTML tags, or any special formatting. The output must be plain text and match the job description. The content should be fluent, conform to Chinese grammatical conventions, and have more than %d characters. Repeat: DO NOT USE MARKDOWN, HTML, OR SPECIAL FORMATTING.", wordLimit),
+			},
+			{
+				"role":    "user",
+				"content": "模板：实习地点：xxxx\n\n工作内容：\n\nxzzzx\n\n工作总结：\n\nxxxxxx\n\n遇到问题：\n\nxzzzx\n\n自我评价：\n\nxxxxxx",
+			},
+			{
+				"role":    "user",
+				"content": "不能使用markdown格式输出注意！！！这是重要的",
+			},
+			{
+				"role":    "user",
+				"content": userInput,
+			},
+		},
+		"model":  "4.0Ultra",
+		"stream": false,
+	}
+	request, err := utils.SendRequest("POST", api.XUNFEIAPI, data, headers)
+	if err != nil {
+		global.Log.Error("Failed to send request: ", err)
+	}
+	json.Unmarshal(request, resdata)
+	global.Log.Info("generate Successful!")
+	global.Log.Infof("输入信息消耗token: %d\t大模型输出信息消耗token: %d\t总token: %d", resdata.Usage.PromptTokens, resdata.Usage.CompletionTokens, resdata.Usage.TotalTokens)
+	return resdata.Choices[0].Message.Content
 }

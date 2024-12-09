@@ -16,28 +16,29 @@ import (
 )
 
 func (m *MoguDing) Run() {
-	global.Log.Infof("Starting sign-in process for user: %s", m.PhoneNumber)
-	//m.GetBlock()
+
 	if err := m.GetBlock(); err != nil {
 		utils.SendMail(m.Email, "Block-Error", err.Error())
 		global.Log.Error(err.Error())
 		return
 	}
-
 	if err := m.Login(); err != nil {
 		utils.SendMail(m.Email, "Login-Error-测试邮件请勿回复", err.Error())
 		global.Log.Error(err.Error())
 		return
 	}
 	m.GetPlanId()
-
 	if err := m.GetJobInfo(); err != nil {
 		global.Log.Error(err.Error())
 		return
 	}
-	m.SignIn()
+	m.getWeeksTime()
+	//m.SignIn()
+	//m.getSubmittedReportsInfo("day")
 	m.getSubmittedReportsInfo("week")
+	m.SubmitReport("week", 1000)
 	m.getSubmittedReportsInfo("month")
+	m.SubmitReport("month", 1600)
 }
 
 var headers = map[string][]string{
@@ -59,6 +60,7 @@ func addHeader(key, value string) {
 }
 
 func (mo *MoguDing) GetBlock() error {
+	global.Log.Infof("Starting sign-in process for user: %s", mo.Email)
 	var maxRetries = 15
 	for attempts := 1; attempts <= maxRetries; attempts++ {
 		err := mo.processBlock()
@@ -95,6 +97,7 @@ func (mo *MoguDing) processBlock() error {
 	x, _ := captcha.FindBestMatch()
 
 	// 加密并验证
+
 	xY := map[string]string{"x": strconv.FormatFloat(GenerateRandomFloat(x), 'f', -1, 64), "y": strconv.Itoa(5)}
 	global.Log.Info(fmt.Sprintf("Captcha matched at: xY=%s", xY))
 
@@ -219,6 +222,10 @@ func (mogu *MoguDing) GetJobInfo() error {
 	json.Unmarshal(request, &job)
 	if job.Data.JobId == "" {
 		return fmt.Errorf("job info not found")
+	} else {
+		mogu.JobInfo.JobName = job.Data.JobName
+		mogu.JobInfo.Address = job.Data.Address
+		mogu.JobInfo.CompanyName = job.Data.CompanyName
 	}
 	return nil
 }
@@ -276,11 +283,57 @@ func (mogu *MoguDing) getSubmittedReportsInfo(reportType string) {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
 	json.Unmarshal(request, &report)
-	global.Log.Info(report)
+	if report.Flag == 0 {
+		global.Log.Warning("未发现之前存在报告，初始化报告为0")
+		mogu.ReportStruct.CreateTime = ""
+		mogu.ReportStruct.ReportId = ""
+		mogu.ReportStruct.ReportType = ""
+		mogu.ReportStruct.Flag = 0
+		return
+	} else {
+		mogu.ReportStruct.CreateTime = report.Data[0].CreateTime
+		mogu.ReportStruct.ReportId = report.Data[0].ReportId
+		mogu.ReportStruct.ReportType = report.Data[0].ReportType
+		mogu.ReportStruct.Flag = report.Flag
+	}
+}
+
+// 获取提交周时间
+func (mogu *MoguDing) getWeeksTime() {
+	week := &data.WeeksData{}
+	addHeader("rolekey", mogu.RoleKey)
+	addHeader("authorization", mogu.Authorization)
+	addHeader("userid", mogu.UserId)
+	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
+	body := map[string]interface{}{
+		"t": timestamp,
+	}
+	request, err := utils.SendRequest("POST", api.BaseApi+api.GetWeeks, body, headers)
+	if err != nil {
+		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
+	}
+	json.Unmarshal(request, &week)
+	mogu.WeekTime.Week = week.Data[0].Weeks
+	mogu.WeekTime.StartTime = week.Data[0].StartTime
+	mogu.WeekTime.EndTime = week.Data[0].EndTime
+	mogu.WeekTime.IsDefault = week.Data[0].IsDefault
+	mogu.WeekTime.Flag = week.Flag
 }
 
 // SubmitReport
 // 提交定时报告
-func (mogu *MoguDing) SubmitReport() {
-
+func (mogu *MoguDing) SubmitReport(reportType string, limit int) {
+	res := &data.RepResData{}
+	input := "报告类型: " + reportType + " 工作地点: " + mogu.JobInfo.Address + " 公司名: " + mogu.JobInfo.CompanyName + " 岗位职责: " + mogu.JobInfo.JobName
+	ai := GenerateReportAI(input, limit)
+	addHeader("userid", mogu.UserId)
+	addHeader("rolekey", mogu.RoleKey)
+	addHeader("authorization", mogu.Authorization)
+	filling := SubmitStructureFilling(mogu, ai, "报告", reportType)
+	sign := utils.CreateSign(mogu.UserId, reportType, mogu.PlanID, "报告")
+	addHeader("sign", sign)
+	request, _ := utils.SendRequest("POST", api.BaseApi+api.SubmitAReport, filling, headers)
+	json.Unmarshal(request, &res)
+	global.Log.Info(fmt.Sprintf("Submit report: %v", res))
+	utils.SendMail(mogu.Email, strconv.Itoa(res.Code), res.Msg+"\n如果未成功请联系管理员")
 }

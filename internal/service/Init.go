@@ -18,8 +18,11 @@ func NewAppService() *AppService {
 
 func (svc *AppService) Init() {
 	// 启动各模块服务
+	//ai := gongxueyun_service.GenerateReportAI("周报 工作地点: 浙江省宁波高新区光信路69号菁华路58号B座4001室 公司名:宁波晨希网络科技有限公司  岗位职责: 电话催收客服", 1500)
+	//global.Log.Info("\n" + ai)
 	svc.StartGongxueYun()
 	//svc.StartTestCX()
+	//utils.CreateSign("")
 }
 
 func (svc *AppService) loadUsers() {
@@ -40,12 +43,10 @@ func (svc *AppService) StartGongxueYun() {
 		wg.Add(1)
 		go func(user entity.SignEntity) {
 			defer wg.Done()
-			// 使用 Mutex 上锁，确保同一时间只有一个 goroutine 执行
 			mu.Lock()
-			// 执行用户的操作
 			ding := svc.createMoguDing(user)
 			ding.Run()
-			defer mu.Unlock() // 确保执行完毕后解锁
+			defer mu.Unlock()
 		}(user)
 	}
 	wg.Wait() // 等待所有 goroutine 完成

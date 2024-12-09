@@ -23,3 +23,5 @@ mail:
   password: you-password
   ssl: true
   local-home:         #可选
+ai:
+  token: #使用讯飞星火大模型生成报告

@@ -95,7 +95,6 @@ func CreateSign(args ...string) string {
 		signStr += arg
 	}
 	signStr += SignSuffix
-
 	// 生成 MD5 签名
 	hash := md5.Sum([]byte(signStr))
 	return hex.EncodeToString(hash[:])
