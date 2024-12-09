@@ -32,9 +32,8 @@ func (m *MoguDing) Run() {
 		global.Log.Error(err.Error())
 		return
 	}
+	m.SignIn()
 	m.getWeeksTime()
-	//m.SignIn()
-	//m.getSubmittedReportsInfo("day")
 	m.getSubmittedReportsInfo("week")
 	m.SubmitReport("week", 1000)
 	m.getSubmittedReportsInfo("month")
@@ -324,7 +323,17 @@ func (mogu *MoguDing) getWeeksTime() {
 // 提交定时报告
 func (mogu *MoguDing) SubmitReport(reportType string, limit int) {
 	res := &data.RepResData{}
-	input := "报告类型: " + reportType + " 工作地点: " + mogu.JobInfo.Address + " 公司名: " + mogu.JobInfo.CompanyName + " 岗位职责: " + mogu.JobInfo.JobName
+	var _t string
+	switch reportType {
+	case "week":
+		_t = "周报"
+	case "month":
+		_t = "月报"
+	case "day":
+		_t = "日报"
+	}
+	input := fmt.Sprintf("报告类型: %s 工作地点: %s 公司名: %s 岗位职责: %s", _t, mogu.JobInfo.Address, mogu.JobInfo.CompanyName, mogu.JobInfo.JobName)
+
 	ai := GenerateReportAI(input, limit)
 	addHeader("userid", mogu.UserId)
 	addHeader("rolekey", mogu.RoleKey)
