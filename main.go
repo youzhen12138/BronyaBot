@@ -13,4 +13,6 @@ func main() {
 	global.Mail = core.InitMail()
 	appService := service.NewAppService()
 	appService.Init()
+
+	select {}
 }

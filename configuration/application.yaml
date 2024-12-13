@@ -25,3 +25,20 @@ mail:
   local-home:         #可选
 ai:
   token: #使用讯飞星火大模型生成报告
+account:
+  gongxueyun: #对工学云单用户无数据库服务新开账号密码登录
+    off: true                                     #off: true or false 是否开启单用户加载，单用户加载开启时无法使用mysql数据
+    phone: "13888888888"                          #phone: 手机号码
+    password: "your_password"                     #password: 密码
+    country: "China"                              #country: 国家
+    province: "Beijing"                           #province: 省份
+    city: "Beijing"                               #city: 城市
+    area: "Chaoyang"                              #area: 地区
+    latitude: "39.929986"                         #latitude: 纬度
+    longitude: "116.465416"                       #longitude: 经度
+    email: "example@example.com"                  #email: 邮箱地址
+    address: "No. 1, Chaoyang District, Beijing"  #address: 详细地址
+    type: "home"                                  #type: 类型（例如：home、work）
+  cx:
+    phone:
+    password:

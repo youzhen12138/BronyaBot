@@ -141,10 +141,9 @@ func GenerateReportAI(userInput string, wordLimit int) string {
 		"top_k":       4,
 		"temperature": 0.5,
 		"messages": []map[string]string{
-
 			{
 				"role":    "user",
-				"content": fmt.Sprintf("According to the information provided by the user, write an article strictly according to the template. Do not use Markdown syntax, HTML tags, or any special formatting. The output must be plain text and match the job description. The content should be fluent, conform to Chinese grammatical conventions, and have more than %d characters. Repeat: DO NOT USE MARKDOWN, HTML, OR SPECIAL FORMATTING.", wordLimit),
+				"content": fmt.Sprintf("According to the information provided by the user, write an article strictly according to the template. Do not use Markdown syntax, HTML tags, or any special formatting. The output must be plain text and match the job description. The content should be fluent, conform to Chinese grammatical conventions, Repeat: DO NOT USE MARKDOWN ,and have more than %d characters. ", wordLimit),
 			},
 			{
 				"role":    "user",

@@ -4,9 +4,9 @@ go 1.23.1
 
 require (
 	github.com/google/uuid v1.4.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.19.0
-	golang.org/x/time v0.5.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.12

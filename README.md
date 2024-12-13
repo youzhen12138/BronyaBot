@@ -68,6 +68,27 @@ mail:
   password: you-password
   ssl: true
   local-home:           #可选
+ai:
+  token: #使用讯飞星火大模型生成报告
+  
+#为没用数据库的用户提供，无法多用户加载
+account:
+  gongxueyun: #对工学云单用户无数据库服务新开账号密码登录
+    off: true                                     #off: true or false 是否开启单用户加载，单用户加载开启时无法使用mysql数据
+    phone: "13888888888"                          #phone: 手机号码
+    password: "your_password"                     #password: 密码
+    country: "China"                              #country: 国家
+    province: "Beijing"                           #province: 省份
+    city: "Beijing"                               #city: 城市
+    area: "Chaoyang"                              #area: 地区
+    latitude: "39.929986"                         #latitude: 纬度
+    longitude: "116.465416"                       #longitude: 经度
+    email: "example@example.com"                  #email: 邮箱地址
+    address: "No. 1, Chaoyang District, Beijing"  #address: 详细地址
+    type: "home"                                  #type: 类型（例如：home、work）
+  cx:
+    phone:
+    password:
 ```
 
 ---
@@ -106,7 +127,7 @@ CREATE TABLE sign
 |---------|-----------------|--------|
 | 工学云签到   | 模拟登录并完成每日签到任务   | 已完成 ✅  |
 | 滑块验证破解	 | 自动处理工学云最新版滑块验证	 | 已完成 ✅  |
-| 工学云定时上报 | 自动完成上报周报月报      | 开发中🚧  |
+| 工学云定时上报 | 自动完成上报周报月报      | 开发中✅  |
 | 超星学习通   | 自动刷课、考试、答题      | 开发中 🚧 |
 | 用户管理    | 基于数据库管理用户信息     | 已完成 ✅  |
 | 日志记录    | 自动记录签到状态和错误信息   | 已完成 ✅  |
@@ -166,6 +187,7 @@ Star 趋势图
 ---
 
 ## 📧 联系我们
+
 如有问题或建议，请 [点击链接](https://qm.qq.com/q/z8mab8YVm8)。
 
 **不支持定制不接单，需要的可以联系我代挂**

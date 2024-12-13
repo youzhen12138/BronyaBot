@@ -15,8 +15,7 @@ import (
 	"time"
 )
 
-func (m *MoguDing) Run() {
-
+func (m *MoguDing) Run(runType string) {
 	if err := m.GetBlock(); err != nil {
 		utils.SendMail(m.Email, "Block-Error", err.Error())
 		global.Log.Error(err.Error())
@@ -32,12 +31,17 @@ func (m *MoguDing) Run() {
 		global.Log.Error(err.Error())
 		return
 	}
-	m.SignIn()
 	m.getWeeksTime()
-	m.getSubmittedReportsInfo("week")
-	m.SubmitReport("week", 1000)
-	m.getSubmittedReportsInfo("month")
-	m.SubmitReport("month", 1600)
+	if runType == "sign" {
+		m.SignIn()
+	} else if runType == "week" {
+		m.getSubmittedReportsInfo("week")
+		m.SubmitReport("week", 1500)
+	} else if runType == "month" {
+		m.getSubmittedReportsInfo("month")
+		m.SubmitReport("month", 1600)
+	}
+
 }
 
 var headers = map[string][]string{
@@ -165,10 +169,10 @@ func (mogu *MoguDing) Login() error {
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to decrypt data: %v", err))
 	}
-	if loginData.Phone == "" {
-		mogu.Run()
-		return nil
-	}
+	//if loginData.Phone == "" {
+	//	mogu.Run()
+	//	return nil
+	//}
 	mogu.RoleKey = loginData.RoleKey
 	mogu.UserId = loginData.UserId
 	mogu.Authorization = loginData.Token
@@ -254,11 +258,13 @@ func (mogu *MoguDing) SignIn() {
 }
 func (mogu *MoguDing) updateSignState(state int) {
 	// 更新数据库表中的 state 字段
-	err := global.DB.Model(&entity.SignEntity{}).Where("username = ?", mogu.PhoneNumber).Update("state", state).Error
-	if err != nil {
-		global.Log.Error(fmt.Sprintf("Failed to update state for user %s: %v", mogu.PhoneNumber, err))
-	} else {
-		global.Log.Info(fmt.Sprintf("Successfully updated state for user %s to %d", mogu.PhoneNumber, state))
+	if mogu.ID != -1 {
+		err := global.DB.Model(&entity.SignEntity{}).Where("username = ?", mogu.PhoneNumber).Update("state", state).Error
+		if err != nil {
+			global.Log.Error(fmt.Sprintf("Failed to update state for user %s: %v", mogu.PhoneNumber, err))
+		} else {
+			global.Log.Info(fmt.Sprintf("Successfully updated state for user %s to %d", mogu.PhoneNumber, state))
+		}
 	}
 }
 
@@ -333,7 +339,6 @@ func (mogu *MoguDing) SubmitReport(reportType string, limit int) {
 		_t = "日报"
 	}
 	input := fmt.Sprintf("报告类型: %s 工作地点: %s 公司名: %s 岗位职责: %s", _t, mogu.JobInfo.Address, mogu.JobInfo.CompanyName, mogu.JobInfo.JobName)
-
 	ai := GenerateReportAI(input, limit)
 	addHeader("userid", mogu.UserId)
 	addHeader("rolekey", mogu.RoleKey)

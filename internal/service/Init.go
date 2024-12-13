@@ -5,51 +5,92 @@ import (
 	"BronyaBot/internal/entity"
 	"BronyaBot/internal/service/cx_service"
 	"BronyaBot/internal/service/gongxueyun_service"
-	"sync"
+	"github.com/robfig/cron/v3"
+	"time"
 )
 
 type AppService struct {
 	users []entity.SignEntity
+	cron  *cron.Cron
 }
 
 func NewAppService() *AppService {
-	return &AppService{}
+	return &AppService{
+		cron: cron.New(),
+	}
 }
 
 func (svc *AppService) Init() {
 	// 启动各模块服务
-	//ai := gongxueyun_service.GenerateReportAI("周报 工作地点: 浙江省宁波高新区光信路69号菁华路58号B座4001室 公司名:宁波晨希网络科技有限公司  岗位职责: 电话催收客服", 1500)
-	//global.Log.Info("\n" + ai)
-	svc.StartGongxueYun()
+	svc.scheduleTasks()
+	svc.cron.Start()
 	//svc.StartTestCX()
-	//utils.CreateSign("")
 }
 
 func (svc *AppService) loadUsers() {
-	global.DB.Find(&svc.users)
-	if len(svc.users) == 0 {
-		global.Log.Warn("No users found in the database.")
+	if global.Config.Account.Gongxueyun.Off {
+		global.Log.Info("已开启yaml配置  启用本地加载单用户模式")
+		svc.users = append(svc.users, entity.SignEntity{
+			ID:        -1,
+			Username:  global.Config.Account.Gongxueyun.Phone,
+			Password:  global.Config.Account.Gongxueyun.Password,
+			Country:   global.Config.Account.Gongxueyun.Country,
+			Province:  global.Config.Account.Gongxueyun.Province,
+			City:      global.Config.Account.Gongxueyun.City,
+			Area:      global.Config.Account.Gongxueyun.Area,
+			Address:   global.Config.Account.Gongxueyun.Address,
+			Latitude:  global.Config.Account.Gongxueyun.Latitude,
+			Longitude: global.Config.Account.Gongxueyun.Longitude,
+			Email:     global.Config.Account.Gongxueyun.Email,
+		})
 	} else {
-		global.Log.Info("Users loaded successfully.")
+		global.DB.Find(&svc.users)
+		if len(svc.users) == 0 {
+			global.Log.Warn("No users found in the database.")
+		} else {
+			global.Log.Info("Users loaded successfully.")
+		}
 	}
 }
-func (svc *AppService) StartGongxueYun() {
+func (svc *AppService) scheduleTasks() {
+	global.Log.Info("Scheduling tasks...")
+	// 每天早上8点执行
+	svc.cron.AddFunc("0 8 * * *", func() {
+		global.Log.Info("Running task: 每天早上8点签到")
+		svc.StartGongxueYun("sign")
+		global.Log.Info("Task finished!")
+	})
+	// 每天晚上6点执行
+	svc.cron.AddFunc("0 18 * * *", func() {
+		global.Log.Info("Running task: 每天晚上6点签到")
+		svc.StartGongxueYun("sign")
+		global.Log.Info("Task finished!")
+	})
+
+	// 每周周五早上10点执行
+	svc.cron.AddFunc("0 10 * * 5", func() {
+		global.Log.Info("Running task: 每周周五早上10点签到")
+		svc.StartGongxueYun("week")
+		global.Log.Info("Task finished!")
+	})
+
+	// 每月最后一周的周一早上10点执行
+	svc.cron.AddFunc("0 10 ? * 1L", func() {
+		if isLastWeek(time.Now()) {
+			global.Log.Info("Running task: 每月最后一周的周一早上10点签到")
+			svc.StartGongxueYun("month")
+			global.Log.Info("Task finished!")
+		}
+	})
+}
+
+func (svc *AppService) StartGongxueYun(_type string) {
 	svc.loadUsers()
 	global.Log.Info("Starting Gongxueyun module...")
-	// 创建一个 Mutex 来保证每次只有一个 goroutine 执行相关操作
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-	for _, user := range svc.users {
-		wg.Add(1)
-		go func(user entity.SignEntity) {
-			defer wg.Done()
-			mu.Lock()
-			ding := svc.createMoguDing(user)
-			ding.Run()
-			defer mu.Unlock()
-		}(user)
+	for i := range svc.users {
+		ding := svc.createMoguDing(svc.users[i])
+		ding.Run(_type)
 	}
-	wg.Wait() // 等待所有 goroutine 完成
 }
 
 func (svc *AppService) StartTestCX() {
@@ -73,4 +114,10 @@ func (svc *AppService) createMoguDing(user entity.SignEntity) *gongxueyun_servic
 			Longitude: user.Longitude,
 		},
 	}
+}
+func isLastWeek(t time.Time) bool {
+	_, week := t.ISOWeek()
+	nextMonday := t.AddDate(0, 0, 7-int(t.Weekday())) // 下一个星期一
+	nextMonthWeek, _ := nextMonday.ISOWeek()
+	return week != nextMonthWeek
 }
