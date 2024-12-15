@@ -3,6 +3,7 @@ package gongxueyun_service
 import (
 	"BronyaBot/global"
 	"BronyaBot/internal/api"
+	"BronyaBot/internal/entity"
 	"BronyaBot/internal/service/gongxueyun_service/data"
 	"BronyaBot/utils"
 	"encoding/json"
@@ -169,4 +170,33 @@ func GenerateReportAI(userInput string, wordLimit int) string {
 	global.Log.Info("generate Successful!")
 	global.Log.Infof("输入信息消耗token: %d\t大模型输出信息消耗token: %d\t总token: %d", resdata.Usage.PromptTokens, resdata.Usage.CompletionTokens, resdata.Usage.TotalTokens)
 	return resdata.Choices[0].Message.Content
+}
+func LoadUsers() []entity.SignEntity {
+	if global.Config.Account.Gongxueyun.Off {
+		global.Log.Info("已开启yaml配置 启用本地加载单用户模式")
+		return []entity.SignEntity{
+			{
+				ID:        -1,
+				Username:  global.Config.Account.Gongxueyun.Phone,
+				Password:  global.Config.Account.Gongxueyun.Password,
+				Country:   global.Config.Account.Gongxueyun.Country,
+				Province:  global.Config.Account.Gongxueyun.Province,
+				City:      global.Config.Account.Gongxueyun.City,
+				Area:      global.Config.Account.Gongxueyun.Area,
+				Address:   global.Config.Account.Gongxueyun.Address,
+				Latitude:  global.Config.Account.Gongxueyun.Latitude,
+				Longitude: global.Config.Account.Gongxueyun.Longitude,
+				Email:     global.Config.Account.Gongxueyun.Email,
+			},
+		}
+	} else {
+		var users []entity.SignEntity
+		global.DB.Find(&users)
+		if len(users) == 0 {
+			global.Log.Warn("No users found in the database.")
+		} else {
+			global.Log.Info("Users loaded successfully.")
+		}
+		return users
+	}
 }
