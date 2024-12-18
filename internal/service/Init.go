@@ -21,8 +21,13 @@ func NewAppService() *AppService {
 }
 
 func (svc *AppService) Init() {
-	svc.scheduleTasks()
-	svc.cron.Start()
+	//svc.scheduleTasks()
+
+	//svc.cron.Start()
+
+	//svc.StartTestCX()
+	svc.StartGongxueYun("sign")
+	//select {}
 }
 
 func (svc *AppService) scheduleTasks() {
@@ -31,7 +36,6 @@ func (svc *AppService) scheduleTasks() {
 	svc.addCronTask("0 8 * * *", "每天早上8点签到", "sign")
 	svc.addCronTask("0 18 * * *", "每天晚上6点签到", "sign")
 	svc.addCronTask("0 10 * * 5", "每周周五早上10点签到", "week")
-
 	svc.cron.AddFunc("0 10 ? * 1L", func() {
 		if isLastWeek(time.Now()) {
 			global.Log.Info("Running task: 每月最后一周的周一早上10点签到")

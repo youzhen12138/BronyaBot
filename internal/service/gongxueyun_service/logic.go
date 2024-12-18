@@ -26,9 +26,13 @@ func (m *MoguDing) Run(runType string) {
 		global.Log.Error(err.Error())
 		return
 	}
-	m.GetPlanId()
-	if err := m.GetJobInfo(); err != nil {
+
+	if err := m.GetPlanId(); err != nil {
 		global.Log.Error(err.Error())
+		return
+	}
+	if err := m.GetJobInfo(); err != nil {
+		global.Log.Error("Failed to get job info: %v", err)
 		return
 	}
 	m.getWeeksTime()
@@ -52,14 +56,17 @@ var headers = map[string][]string{
 var clientUid = strings.ReplaceAll(uuid.New().String(), "-", "")
 
 func addHeader(key, value string) {
-	// 检查 key 是否已经存在，若存在则追加到对应的值
 	if _, exists := headers[key]; exists {
-		//headers[key] = append(headers[key], value)
 		headers[key] = []string{value}
 	} else {
-		// 若不存在，则新建一个字段
 		headers[key] = []string{value}
 	}
+}
+func addStandardHeaders(roleKey, userId, authorization string) {
+	addHeader("rolekey", roleKey)
+	addHeader("userid", userId)
+	addHeader("authorization", authorization)
+
 }
 
 func (mo *MoguDing) GetBlock() error {
@@ -91,7 +98,6 @@ func (mo *MoguDing) processBlock() error {
 	if err := json.Unmarshal(body, &blockData); err != nil {
 		return fmt.Errorf("failed to parse block puzzle response: %v", err)
 	}
-
 	// 初始化滑块验证码
 	captcha, err := blockPuzzle.NewSliderCaptcha(blockData.Data.JigsawImageBase64, blockData.Data.OriginalImageBase64)
 	if err != nil {
@@ -100,7 +106,6 @@ func (mo *MoguDing) processBlock() error {
 	x, _ := captcha.FindBestMatch()
 
 	// 加密并验证
-
 	xY := map[string]string{"x": strconv.FormatFloat(GenerateRandomFloat(x), 'f', -1, 64), "y": strconv.Itoa(5)}
 	global.Log.Info(fmt.Sprintf("Captcha matched at: xY=%s", xY))
 
@@ -169,10 +174,6 @@ func (mogu *MoguDing) Login() error {
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to decrypt data: %v", err))
 	}
-	//if loginData.Phone == "" {
-	//	mogu.Run()
-	//	return nil
-	//}
 	mogu.RoleKey = loginData.RoleKey
 	mogu.UserId = loginData.UserId
 	mogu.Authorization = loginData.Token
@@ -183,13 +184,13 @@ func (mogu *MoguDing) Login() error {
 	global.Log.Info("Login successful")
 	return nil
 }
-func (mogu *MoguDing) GetPlanId() {
+func (mogu *MoguDing) GetPlanId() error {
+	defaultId := "6686304d065db846edab7d4565065abc"
 	planData := &data.PlanByStuData{}
 	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
 	sign := utils.CreateSign(mogu.UserId, mogu.RoleKey)
-	addHeader("rolekey", mogu.RoleKey)
 	addHeader("sign", sign)
-	addHeader("authorization", mogu.Authorization)
+	addStandardHeaders(mogu.RoleKey, mogu.UserId, mogu.Authorization)
 	body := map[string]interface{}{
 		"pageSize": strconv.Itoa(999999),
 		"t":        timestamp,
@@ -203,16 +204,18 @@ func (mogu *MoguDing) GetPlanId() {
 		mogu.PlanID = planData.Data[i].PlanId
 		mogu.PlanName = planData.Data[i].PlanName
 	}
+	if strings.EqualFold(mogu.PlanID, defaultId) {
+		return fmt.Errorf(mogu.PlanName)
+	}
 	global.Log.Info("================")
 	global.Log.Info(mogu.PlanID)
 	global.Log.Info(mogu.PlanName)
 	global.Log.Info("================")
+	return nil
 }
 func (mogu *MoguDing) GetJobInfo() error {
 	job := &data.JobInfoData{}
-	addHeader("rolekey", mogu.RoleKey)
-	addHeader("authorization", mogu.Authorization)
-	addHeader("userid", mogu.UserId)
+	addStandardHeaders(mogu.RoleKey, mogu.UserId, mogu.Authorization)
 	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
 	body := map[string]interface{}{
 		"planId": mogu.PlanID,
@@ -236,9 +239,8 @@ func (mogu *MoguDing) SignIn() {
 	resdata := &data.SaveData{}
 	filling := DataStructureFilling(mogu)
 	sign := utils.CreateSign(filling["device"].(string), filling["type"].(string), mogu.PlanID, mogu.UserId, filling["address"].(string))
-	addHeader("rolekey", mogu.RoleKey)
+	addStandardHeaders(mogu.RoleKey, mogu.UserId, mogu.Authorization)
 	addHeader("sign", sign)
-	addHeader("authorization", mogu.Authorization)
 	request, err := utils.SendRequest("POST", api.BaseApi+api.SignAPI, filling, headers)
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
@@ -272,8 +274,7 @@ func (mogu *MoguDing) updateSignState(state int) {
 func (mogu *MoguDing) getSubmittedReportsInfo(reportType string) {
 	report := &data.ReportsInfo{}
 	sign := utils.CreateSign(mogu.UserId, mogu.RoleKey, reportType)
-	addHeader("rolekey", mogu.RoleKey)
-	addHeader("userid", mogu.UserId)
+	addStandardHeaders(mogu.RoleKey, mogu.UserId, mogu.Authorization)
 	addHeader("sign", sign)
 	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
 	body := map[string]interface{}{
@@ -306,9 +307,7 @@ func (mogu *MoguDing) getSubmittedReportsInfo(reportType string) {
 // 获取提交周时间
 func (mogu *MoguDing) getWeeksTime() {
 	week := &data.WeeksData{}
-	addHeader("rolekey", mogu.RoleKey)
-	addHeader("authorization", mogu.Authorization)
-	addHeader("userid", mogu.UserId)
+	addStandardHeaders(mogu.RoleKey, mogu.UserId, mogu.Authorization)
 	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
 	body := map[string]interface{}{
 		"t": timestamp,
@@ -318,11 +317,13 @@ func (mogu *MoguDing) getWeeksTime() {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
 	json.Unmarshal(request, &week)
-	mogu.WeekTime.Week = week.Data[0].Weeks
-	mogu.WeekTime.StartTime = week.Data[0].StartTime
-	mogu.WeekTime.EndTime = week.Data[0].EndTime
-	mogu.WeekTime.IsDefault = week.Data[0].IsDefault
-	mogu.WeekTime.Flag = week.Flag
+	if len(week.Data) > 0 {
+		mogu.WeekTime.Week = week.Data[0].Weeks
+		mogu.WeekTime.StartTime = week.Data[0].StartTime
+		mogu.WeekTime.EndTime = week.Data[0].EndTime
+		mogu.WeekTime.IsDefault = week.Data[0].IsDefault
+		mogu.WeekTime.Flag = week.Flag
+	}
 }
 
 // SubmitReport
@@ -340,9 +341,7 @@ func (mogu *MoguDing) SubmitReport(reportType string, limit int) {
 	}
 	input := fmt.Sprintf("报告类型: %s 工作地点: %s 公司名: %s 岗位职责: %s", _t, mogu.JobInfo.Address, mogu.JobInfo.CompanyName, mogu.JobInfo.JobName)
 	ai := GenerateReportAI(input, limit)
-	addHeader("userid", mogu.UserId)
-	addHeader("rolekey", mogu.RoleKey)
-	addHeader("authorization", mogu.Authorization)
+	addStandardHeaders(mogu.RoleKey, mogu.UserId, mogu.Authorization)
 	filling := SubmitStructureFilling(mogu, ai, "报告", reportType)
 	sign := utils.CreateSign(mogu.UserId, reportType, mogu.PlanID, "报告")
 	addHeader("sign", sign)

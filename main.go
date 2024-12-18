@@ -14,5 +14,4 @@ func main() {
 	appService := service.NewAppService()
 	appService.Init()
 
-	select {}
 }
