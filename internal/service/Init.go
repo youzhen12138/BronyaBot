@@ -21,13 +21,12 @@ func NewAppService() *AppService {
 }
 
 func (svc *AppService) Init() {
-	//svc.scheduleTasks()
+	svc.scheduleTasks()
 
-	//svc.cron.Start()
+	svc.cron.Start()
 
 	//svc.StartTestCX()
-	svc.StartGongxueYun("sign")
-	//select {}
+	select {}
 }
 
 func (svc *AppService) scheduleTasks() {
