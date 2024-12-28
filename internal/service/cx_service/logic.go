@@ -39,6 +39,7 @@ func (c *CxLogic) Login() error {
 	global.Log.Info("=====开始登录=====")
 	phone, _ := utils.AESCBCEncrypt([]byte(c.Phone))
 	password, _ := utils.AESCBCEncrypt([]byte(c.Password))
+
 	postres, err := http.PostForm(api.API_LOGIN_WEB, url.Values{
 		"fid":               {"-1"},
 		"uname":             {phone},
@@ -89,7 +90,8 @@ func (c *CxLogic) accInfo() error {
 	c.OssAccInfo.Uname = msg.Uname
 	c.OssAccInfo.Name = msg.Name
 	c.OssAccInfo.Sex = strconv.Itoa(msg.Sex)
-	global.Log.Infof("账号登录成功: %s %s %s %s %s", c.OssAccInfo.Puid, c.OssAccInfo.Name, c.OssAccInfo.Sex, c.OssAccInfo.Phone, c.OssAccInfo.Uname)
+	c.OssAccInfo.SchoolName = msg.Schoolname
+	global.Log.Infof("账号登录成功: %s %s %s %s %s %s", c.OssAccInfo.Puid, c.OssAccInfo.Name, c.OssAccInfo.Sex, c.OssAccInfo.Phone, c.OssAccInfo.SchoolName, c.OssAccInfo.Uname)
 	return nil
 }
 func (c *CxLogic) PullCourse() error {
@@ -116,7 +118,7 @@ func (c *CxLogic) PullCourse() error {
 		return fmt.Errorf("拉取课程失败！")
 	}
 	global.Log.Infof("拉取成功！共%d个课程", len(pull.ChannelList))
-
+	c.ClassesLst = pull
 	for i, s := range pull.ChannelList {
 		global.Log.Infof("序号: %d 课程名: %s 老师名: %s 课程ID: %d 课程状态: %d - %s", i+1, s.Content.Course.Data[0].Name, s.Content.Course.Data[0].Teacherfactor, s.Content.Course.Data[0].Id, s.Content.Course.Data[0].Coursestate,
 			func() string {

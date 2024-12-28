@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// 获取格式化的当前时间
+// GetFormattedTime returns the current time formatted as a string.
 func GetFormattedTime() (string, error) {
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
@@ -25,7 +25,7 @@ func GetFormattedTime() (string, error) {
 	return now.Format("2006-01-02 15:04:05"), nil
 }
 
-// 获取打卡类型（START 或 END）
+// GetClockType determines the clock type (START or END) based on the current time.
 func GetClockType() (string, error) {
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
@@ -38,23 +38,26 @@ func GetClockType() (string, error) {
 	}
 	return "START", nil
 }
+
+// DataStructureFilling creates a data structure for signing.
 func DataStructureFilling(mogu *MoguDing) map[string]interface{} {
-	// 确定打卡类型
 	typeStr, err := GetClockType()
 	if err != nil {
 		return nil
 	}
-	// 加密当前时间戳
+
 	encryptTime, err := EncryptTimestamp(time.Now().UnixMilli())
 	if err != nil {
 		global.Log.Error("Failed to encrypt timestamp: ", err)
 		return nil
 	}
+
 	formattedTime, err := GetFormattedTime()
 	if err != nil {
 		global.Log.Error("Failed to get formatted time: ", err)
+		return nil
 	}
-	// 直接构造 map，而不是先构造结构体再转换为 map
+
 	return map[string]interface{}{
 		"address":    mogu.Sign.Address,
 		"city":       mogu.Sign.City,
@@ -72,28 +75,31 @@ func DataStructureFilling(mogu *MoguDing) map[string]interface{} {
 		"planId":     mogu.PlanID,
 	}
 }
-func SubmitStructureFilling(mogu *MoguDing, content string, title string, Retype string) map[string]interface{} {
-	//formattedTime, err := GetFormattedTime()
-	//if err != nil {
-	//	global.Log.Error("Failed to get formatted time: ", err)
-	//}
-	timestamp, _ := EncryptTimestamp(time.Now().UnixMilli())
+
+// SubmitStructureFilling creates a submission data structure.
+func SubmitStructureFilling(mogu *MoguDing, content, title, retype string) map[string]interface{} {
+	timestamp, err := EncryptTimestamp(time.Now().UnixMilli())
+	if err != nil {
+		global.Log.Error("Failed to encrypt timestamp: ", err)
+		return nil
+	}
+
 	submitData := data.SubmitData{
 		Weeks:      mogu.WeekTime.Week,
 		Content:    content,
 		PlanId:     mogu.PlanID,
-		ReportType: Retype,
-		//ReportTime: formattedTime,
-		Title:     title,
-		JobId:     mogu.CommParameters.JobId,
-		T:         timestamp,
-		StartTime: mogu.WeekTime.StartTime,
-		EndTime:   mogu.WeekTime.EndTime,
+		ReportType: retype,
+		Title:      title,
+		JobId:      mogu.CommParameters.JobId,
+		T:          timestamp,
+		StartTime:  mogu.WeekTime.StartTime,
+		EndTime:    mogu.WeekTime.EndTime,
 	}
+
 	return data.SubmitDataFunc(submitData)
 }
 
-// 加密时间戳的通用方法
+// EncryptTimestamp encrypts a given timestamp.
 func EncryptTimestamp(timestamp int64) (string, error) {
 	padding, err := utils.NewAESECBPKCS5Padding(utils.MoGuKEY, "hex")
 	if err != nil {
@@ -107,73 +113,69 @@ func EncryptTimestamp(timestamp int64) (string, error) {
 	return encryptTime, nil
 }
 
+// GenerateRandomFloat generates a random float based on a base integer part.
 func GenerateRandomFloat(baseIntegerPart int) float64 {
 	rand.Seed(time.Now().UnixNano())
 
-	// Randomly adjust the integer part by ±1
-	adjustment := rand.Intn(4) - 1 // Generates -1, 0, or 1
+	adjustment := rand.Intn(3) - 1 // Generates -1, 0, or 1
 	integerPart := baseIntegerPart + adjustment
 
-	// Calculate the maximum number of decimal places based on the integer part's length
 	intPartLength := len(fmt.Sprintf("%d", integerPart))
 	totalLength := rand.Intn(10) + 10 // Total length between 10 and 19
 	decimalPlaces := totalLength - intPartLength
 
 	if decimalPlaces <= 0 {
-		decimalPlaces = 1 // Ensure at least one decimal place
+		decimalPlaces = 1
 	}
 
-	// Generate a random decimal value with the specified number of decimal places
 	decimalPart := rand.Float64() * math.Pow(10, float64(decimalPlaces))
-	decimalPart = math.Trunc(decimalPart) / math.Pow(10, float64(decimalPlaces)) // Truncate to avoid floating-point imprecision
+	decimalPart = math.Trunc(decimalPart) / math.Pow(10, float64(decimalPlaces))
 
 	return float64(integerPart) + decimalPart
 }
+
+// GenerateReportAI generates a report using AI based on user input.
 func GenerateReportAI(userInput string, wordLimit int) string {
-	// Define request data
-	resdata := &data.AIData{}
+	resData := &data.AIData{}
 
 	headers := map[string][]string{
 		"Content-Type":  {"application/json"},
 		"Authorization": {"Bearer " + global.Config.AI.Token},
 	}
-	data := map[string]interface{}{
+	dat := map[string]interface{}{
 		"max_tokens":  4096,
 		"top_k":       4,
 		"temperature": 0.5,
 		"messages": []map[string]string{
-			{
-				"role":    "user",
-				"content": fmt.Sprintf("According to the information provided by the user, write an article strictly according to the template. Do not use Markdown syntax, HTML tags, or any special formatting. The output must be plain text and match the job description. The content should be fluent, conform to Chinese grammatical conventions, Repeat: DO NOT USE MARKDOWN ,and have more than %d characters. ", wordLimit),
-			},
-			{
-				"role":    "user",
-				"content": "模板：实习地点：xxxx\n\n工作内容：\n\nxzzzx\n\n工作总结：\n\nxxxxxx\n\n遇到问题：\n\nxzzzx\n\n自我评价：\n\nxxxxxx",
-			},
-			{
-				"role":    "user",
-				"content": "不能使用markdown格式输出注意！！！这是重要的",
-			},
-			{
-				"role":    "user",
-				"content": userInput,
-			},
+			{"role": "user", "content": fmt.Sprintf("According to the information provided by the user, write an article strictly according to the template. Do not use Markdown syntax, HTML tags, or any special formatting. The output must be plain text and match the job description. The content should be fluent, conform to Chinese grammatical conventions, Repeat: DO NOT USE MARKDOWN ,and have more than %d characters.", wordLimit)},
+			{"role": "user", "content": "模板：实习地点：xxxx\n\n工作内容：\n\nxzzzx\n\n工作总结：\n\nxxxxxx\n\n遇到问题：\n\nxzzzx\n\n自我评价：\n\nxxxxxx"},
+			{"role": "user", "content": "不能使用markdown格式输出注意！！！这是重要的"},
+			{"role": "user", "content": userInput},
 		},
 		"model":  "4.0Ultra",
 		"stream": false,
 	}
-	request, err := utils.SendRequest("POST", api.XUNFEIAPI, data, headers)
+
+	request, err, _ := utils.NewHttpClient().SendRequest("POST", api.XUNFEIAPI, dat, headers)
 	if err != nil {
 		global.Log.Error("Failed to send request: ", err)
+		return ""
 	}
-	json.Unmarshal(request, resdata)
-	global.Log.Info("generate Successful!")
-	global.Log.Infof("输入信息消耗token: %d\t大模型输出信息消耗token: %d\t总token: %d", resdata.Usage.PromptTokens, resdata.Usage.CompletionTokens, resdata.Usage.TotalTokens)
-	return resdata.Choices[0].Message.Content
+
+	if err := json.Unmarshal(request, resData); err != nil {
+		global.Log.Error("Failed to parse AI response: ", err)
+		return ""
+	}
+
+	global.Log.Info("Generate successful!")
+	global.Log.Infof("Input token usage: %d\tOutput token usage: %d\tTotal token usage: %d", resData.Usage.PromptTokens, resData.Usage.CompletionTokens, resData.Usage.TotalTokens)
+	return resData.Choices[0].Message.Content
 }
+
+// LoadUsers loads user data either from configuration or database.
 func LoadUsers() []entity.SignEntity {
 	if global.Config.Account.Gongxueyun.Off {
-		global.Log.Info("已开启yaml配置 启用本地加载单用户模式")
+		global.Log.Info("Local single-user mode enabled.")
 		return []entity.SignEntity{
 			{
 				ID:        -1,
@@ -189,14 +191,14 @@ func LoadUsers() []entity.SignEntity {
 				Email:     global.Config.Account.Gongxueyun.Email,
 			},
 		}
-	} else {
-		var users []entity.SignEntity
-		global.DB.Find(&users)
-		if len(users) == 0 {
-			global.Log.Warn("No users found in the database.")
-		} else {
-			global.Log.Info("Users loaded successfully.")
-		}
-		return users
 	}
+
+	var users []entity.SignEntity
+	global.DB.Find(&users)
+	if len(users) == 0 {
+		global.Log.Warn("No users found in the database.")
+	} else {
+		global.Log.Info("Users loaded successfully.")
+	}
+	return users
 }

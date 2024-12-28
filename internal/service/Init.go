@@ -22,9 +22,7 @@ func NewAppService() *AppService {
 
 func (svc *AppService) Init() {
 	svc.scheduleTasks()
-
 	svc.cron.Start()
-
 	//svc.StartTestCX()
 	select {}
 }

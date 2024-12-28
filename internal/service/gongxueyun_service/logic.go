@@ -16,7 +16,7 @@ import (
 )
 
 func (m *MoguDing) Run(runType string) {
-	if err := m.GetBlock(); err != nil {
+	if err := m.handleCaptcha(); err != nil {
 		utils.SendMail(m.Email, "Block-Error", err.Error())
 		global.Log.Error(err.Error())
 		return
@@ -28,16 +28,16 @@ func (m *MoguDing) Run(runType string) {
 	}
 
 	if err := m.GetPlanId(); err != nil {
-		global.Log.Error(err.Error())
+		global.Log.Warning(err.Error())
 		return
 	}
 	if err := m.GetJobInfo(); err != nil {
-		global.Log.Error("Failed to get job info: %v", err)
+		global.Log.Warn("Failed to get job info: %v", err)
 		return
 	}
 	m.getWeeksTime()
 	if runType == "sign" {
-		m.SignIn()
+		//m.SignIn()
 	} else if runType == "week" {
 		m.getSubmittedReportsInfo("week")
 		m.SubmitReport("week", 1500)
@@ -48,40 +48,44 @@ func (m *MoguDing) Run(runType string) {
 
 }
 
-var headers = map[string][]string{
-	"User-Agent":   {"Mozilla/5.0 (Linux; U; Android 9; zh-cn; Redmi Note 5 Build/PKQ1.180904.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/71.0.3578.141 Mobile Safari/537.36 XiaoMi/MiuiBrowser/11.10.8"},
-	"Content-Type": {"application/json; charset=UTF-8"},
-	"host":         {"api.moguding.net:9000"},
-}
-var clientUid = strings.ReplaceAll(uuid.New().String(), "-", "")
+const (
+	MaxRetries    = 15
+	DefaultPlanID = "6686304d065db846edab7d4565065abc"
+	PageSize      = 999999
+)
 
-func addHeader(key, value string) {
-	if _, exists := headers[key]; exists {
-		headers[key] = []string{value}
-	} else {
-		headers[key] = []string{value}
+var (
+	headers = map[string][]string{
+		"User-Agent":   {"Mozilla/5.0 (Linux; U; Android 9; zh-cn; Redmi Note 5 Build/PKQ1.180904.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/71.0.3578.141 Mobile Safari/537.36 XiaoMi/MiuiBrowser/11.10.8"},
+		"Content-Type": {"application/json; charset=UTF-8"},
+		"host":         {"api.moguding.net:9000"},
 	}
+	clientUid = strings.ReplaceAll(uuid.New().String(), "-", "")
+	client    = utils.NewHttpClient()
+)
+
+// 添加请求头
+func addHeader(key, value string) {
+	headers[key] = []string{value}
 }
+
+// 添加标准请求头
 func addStandardHeaders(roleKey, userId, authorization string) {
 	addHeader("rolekey", roleKey)
 	addHeader("userid", userId)
 	addHeader("authorization", authorization)
-
 }
 
-func (mo *MoguDing) GetBlock() error {
-	global.Log.Infof("Starting sign-in process for user: %s", mo.Email)
-	var maxRetries = 15
-	for attempts := 1; attempts <= maxRetries; attempts++ {
-		err := mo.processBlock()
-		if err == nil {
+// 滑块验证码逻辑
+func (mo *MoguDing) handleCaptcha() error {
+	for attempt := 1; attempt <= MaxRetries; attempt++ {
+		if err := mo.processBlock(); err == nil {
 			return nil
 		}
-		global.Log.Warning(fmt.Sprintf("Retrying captcha (%d/%d)", attempts, maxRetries))
+		global.Log.Warn(fmt.Sprintf("Retry captcha (%d/%d)", attempt, MaxRetries))
 		time.Sleep(10 * time.Second)
 	}
-	global.Log.Error("Failed to process captcha after maximum retries")
-	return fmt.Errorf("failed to process captcha after maximum retries")
+	return fmt.Errorf("captcha failed after %d attempts", MaxRetries)
 }
 func (mo *MoguDing) processBlock() error {
 	// 获取验证码数据
@@ -89,7 +93,7 @@ func (mo *MoguDing) processBlock() error {
 		"clientUid":   clientUid,
 		"captchaType": "blockPuzzle",
 	}
-	body, err := utils.SendRequest("POST", api.BaseApi+api.BlockPuzzle, requestData, headers)
+	body, _, err := client.SendRequest("POST", api.BaseApi+api.BlockPuzzle, requestData, headers)
 	if err != nil {
 		return fmt.Errorf("failed to fetch block puzzle: %v", err)
 	}
@@ -121,7 +125,7 @@ func (mo *MoguDing) processBlock() error {
 		"token":       blockData.Data.Token,
 		"captchaType": "blockPuzzle",
 	}
-	body, err = utils.SendRequest("POST", api.BaseApi+api.CHECK, requestData, headers)
+	body, _, err = client.SendRequest("POST", api.BaseApi+api.CHECK, requestData, headers)
 	if err != nil {
 		return fmt.Errorf("failed to verify captcha: %v", err)
 	}
@@ -160,7 +164,7 @@ func (mogu *MoguDing) Login() error {
 	}
 	var login = &data.Login{}
 	var loginData = &data.LoginData{}
-	body, err := utils.SendRequest("POST", api.BaseApi+api.LoginAPI, requestData, headers)
+	body, _, err := client.SendRequest("POST", api.BaseApi+api.LoginAPI, requestData, headers)
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
@@ -195,7 +199,7 @@ func (mogu *MoguDing) GetPlanId() error {
 		"pageSize": strconv.Itoa(999999),
 		"t":        timestamp,
 	}
-	request, err := utils.SendRequest("POST", api.BaseApi+api.GetPlanIDAPI, body, headers)
+	request, _, err := client.SendRequest("POST", api.BaseApi+api.GetPlanIDAPI, body, headers)
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
@@ -221,7 +225,7 @@ func (mogu *MoguDing) GetJobInfo() error {
 		"planId": mogu.PlanID,
 		"t":      timestamp,
 	}
-	request, err := utils.SendRequest("POST", api.BaseApi+api.GetJobInfoAPI, body, headers)
+	request, _, err := client.SendRequest("POST", api.BaseApi+api.GetJobInfoAPI, body, headers)
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
@@ -241,7 +245,7 @@ func (mogu *MoguDing) SignIn() {
 	sign := utils.CreateSign(filling["device"].(string), filling["type"].(string), mogu.PlanID, mogu.UserId, filling["address"].(string))
 	addStandardHeaders(mogu.RoleKey, mogu.UserId, mogu.Authorization)
 	addHeader("sign", sign)
-	request, err := utils.SendRequest("POST", api.BaseApi+api.SignAPI, filling, headers)
+	request, _, err := client.SendRequest("POST", api.BaseApi+api.SignAPI, filling, headers)
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
@@ -284,7 +288,7 @@ func (mogu *MoguDing) getSubmittedReportsInfo(reportType string) {
 		"planId":     mogu.PlanID,
 		"t":          timestamp,
 	}
-	request, err := utils.SendRequest("POST", api.BaseApi+api.GetWeekCountAPI, body, headers)
+	request, _, err := client.SendRequest("POST", api.BaseApi+api.GetWeekCountAPI, body, headers)
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
@@ -312,7 +316,7 @@ func (mogu *MoguDing) getWeeksTime() {
 	body := map[string]interface{}{
 		"t": timestamp,
 	}
-	request, err := utils.SendRequest("POST", api.BaseApi+api.GetWeeks, body, headers)
+	request, _, err := client.SendRequest("POST", api.BaseApi+api.GetWeeks, body, headers)
 	if err != nil {
 		global.Log.Info(fmt.Sprintf("Failed to send request: %v", err))
 	}
@@ -345,7 +349,7 @@ func (mogu *MoguDing) SubmitReport(reportType string, limit int) {
 	filling := SubmitStructureFilling(mogu, ai, "报告", reportType)
 	sign := utils.CreateSign(mogu.UserId, reportType, mogu.PlanID, "报告")
 	addHeader("sign", sign)
-	request, _ := utils.SendRequest("POST", api.BaseApi+api.SubmitAReport, filling, headers)
+	request, _, _ := client.SendRequest("POST", api.BaseApi+api.SubmitAReport, filling, headers)
 	json.Unmarshal(request, &res)
 	global.Log.Info(fmt.Sprintf("Submit report: %v", res))
 	utils.SendMail(mogu.Email, strconv.Itoa(res.Code), res.Msg+"\n如果未成功请联系管理员")
